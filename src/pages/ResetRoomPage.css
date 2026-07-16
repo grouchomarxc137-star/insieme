@@ -1,0 +1,62 @@
+.reset-intro-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--lavender-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reset-intro-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.reset-intro-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reset-start-btn {
+  align-self: flex-start;
+  background: var(--gold);
+  border: 1px solid var(--gold-strong);
+  color: #5b4620;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reset-start-btn:hover:not(:disabled) {
+  background: var(--gold-strong);
+}
+
+.reset-start-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reset-error {
+  margin: 0;
+  color: #b3453a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reset-note {
+  font-size: 12px !important;
+}
+
+.reset-note code {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}

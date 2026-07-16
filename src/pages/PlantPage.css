@@ -1,0 +1,381 @@
+.scene-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+
+.growth-card,
+.factors-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.growth-card h2,
+.factors-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lock-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.lock-badge--locked {
+  background: #eaf6ec;
+  border-color: var(--mint-strong);
+  color: #3f7a55;
+}
+
+.level-stage-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.level-bar {
+  height: 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.level-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mint-strong), var(--gold));
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.level-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.multiplier-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.multiplier-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.multiplier-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gold-strong, var(--gold));
+}
+
+.multiplier-bar-fill {
+  background: linear-gradient(90deg, var(--toxicity), var(--gold), var(--mint-strong));
+}
+
+.growth-track {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  row-gap: 12px;
+}
+
+.growth-step-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.growth-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  min-width: 76px;
+  opacity: 0.55;
+  font: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.growth-step:hover {
+  opacity: 0.85;
+}
+
+.growth-step.is-past {
+  opacity: 0.8;
+}
+
+.growth-step.is-current {
+  opacity: 1;
+  background: var(--pink);
+  border-color: var(--pink-strong);
+}
+
+.growth-icon {
+  font-size: 20px;
+}
+
+.growth-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.growth-level {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.growth-arrow {
+  color: var(--text-muted);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.factor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.factors-hint {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.factor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: 6px;
+  margin: -6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.factor-row:hover {
+  background: var(--surface-alt);
+}
+
+.factor-icon {
+  font-size: 16px;
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.factor-label {
+  font-size: 13px;
+  font-weight: 700;
+  width: 84px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+
+.factor-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.factor-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.factor-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.quick-log-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.quick-log-row:hover:not(:disabled) {
+  background: var(--pink);
+}
+
+.quick-log-row:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.quick-log-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.quick-log-label {
+  width: auto;
+}
+
+.quick-log-description {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.quick-log-status {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.factor-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(74, 68, 83, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.factor-modal {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.factor-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.factor-modal-close:hover {
+  background: var(--pink);
+  color: var(--text);
+}
+
+.factor-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 28px;
+}
+
+.factor-modal-icon {
+  font-size: 28px;
+}
+
+.factor-modal-header h2 {
+  margin: 0;
+  font-size: 19px;
+  flex: 1;
+}
+
+.factor-modal-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+
+.factor-modal-section h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.factor-modal-section p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}

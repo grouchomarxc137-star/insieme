@@ -1,0 +1,254 @@
+.checkin-type-row {
+  display: flex;
+  gap: 8px;
+}
+
+.checkin-type-btn {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.checkin-type-btn.is-active {
+  background: var(--lavender);
+  border-color: var(--lavender-strong);
+  color: var(--text);
+}
+
+.checkin-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: 14px 16px;
+}
+
+.checkin-period-label {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.checkin-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.checkin-badge--complete {
+  background: #eaf6ec;
+  border-color: var(--mint-strong);
+  color: #3f7a55;
+}
+
+.checkin-badge--open {
+  background: #fff6e2;
+  border-color: var(--gold);
+  color: #8a6a1f;
+}
+
+.checkin-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.checkin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.checkin-heading {
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.checkin-heading:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.checkin-heading h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.checkin-heading p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.checkin-question {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkin-question-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.checkin-required {
+  color: var(--pink-strong);
+  margin-left: 4px;
+}
+
+.checkin-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkin-pill {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.checkin-pill:hover {
+  background: var(--pink);
+}
+
+.checkin-pill.is-selected {
+  background: var(--lavender);
+  border-color: var(--lavender-strong);
+}
+
+.checkin-textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.checkin-error {
+  margin: 0;
+  color: #b3453a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.checkin-submit-btn {
+  align-self: flex-start;
+  background: var(--gold);
+  border: 1px solid var(--gold-strong);
+  color: #5b4620;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.checkin-submit-btn:hover:not(:disabled) {
+  background: var(--gold-strong);
+}
+
+.checkin-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkin-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comparison-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comparison-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.comparison-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comparison-panel span {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.comparison-panel p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.comparison-panel--principe {
+  border-top-color: var(--lavender-strong);
+}
+
+.comparison-panel--principessa {
+  border-top-color: var(--pink-strong);
+}

@@ -1,0 +1,350 @@
+.tickets-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--gold-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tickets-form h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tickets-form-intro {
+  margin: -8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tickets-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tickets-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .tickets-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tickets-input,
+.tickets-select,
+.tickets-textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.tickets-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.tickets-submit-btn {
+  align-self: flex-start;
+  background: var(--gold);
+  border: 1px solid var(--gold-strong);
+  color: #5b4620;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tickets-submit-btn:hover:not(:disabled) {
+  background: var(--gold-strong);
+}
+
+.tickets-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tickets-error {
+  margin: 0;
+  color: #b3453a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tickets-success {
+  margin: 0;
+  color: #3f7a55;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tickets-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.tickets-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tickets-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tickets-section-header h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.tickets-section-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.tickets-count-pill {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.tickets-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tickets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ticket-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--lavender-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-card--sent {
+  border-top-color: var(--pink-strong);
+}
+
+.ticket-card--handled {
+  border-top-color: var(--mint-strong);
+  padding: 0;
+}
+
+.ticket-card--handled summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ticket-card--handled summary::-webkit-details-marker {
+  display: none;
+}
+
+.ticket-handled-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ticket-handled-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.ticket-handled-content {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ticket-card-top h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.ticket-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tickets-status-select {
+  flex-shrink: 0;
+  max-width: 200px;
+}
+
+.tickets-status-pill {
+  flex-shrink: 0;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ticket-chip-row {
+  display: flex;
+  gap: 8px;
+}
+
+.tickets-chip {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ticket-body {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ticket-body strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ticket-body p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ticket-reply-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tickets-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.ticket-locked-reply {
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.ticket-locked-reply strong {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.ticket-locked-reply p {
+  margin: 0;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tickets-btn {
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.tickets-btn--primary {
+  background: var(--gold);
+  border-color: var(--gold-strong);
+  color: #5b4620;
+}
+
+.tickets-btn--primary:hover:not(:disabled) {
+  background: var(--gold-strong);
+}
+
+.tickets-btn--ghost {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.tickets-btn--ghost:hover:not(:disabled) {
+  background: var(--pink);
+  color: var(--text);
+}
+
+.tickets-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

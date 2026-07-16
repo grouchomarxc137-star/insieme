@@ -1,0 +1,119 @@
+.discord-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.discord-panel-header h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.discord-panel-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.discord-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.discord-option-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.discord-option-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 220px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+}
+
+.discord-option-wrap:hover .discord-option-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.discord-option {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.discord-option:hover {
+  background: var(--pink);
+}
+
+.discord-option.is-selected {
+  background: var(--lavender);
+  border-color: var(--lavender-strong);
+}
+
+.discord-send-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.discord-send-btn {
+  background: var(--gold);
+  border: 1px solid var(--gold-strong);
+  color: #5b4620;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.discord-send-btn:not(:disabled):hover {
+  background: var(--gold-strong);
+}
+
+.discord-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.discord-confirm {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3f7a55;
+}
+
+.discord-error {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b3453a;
+}

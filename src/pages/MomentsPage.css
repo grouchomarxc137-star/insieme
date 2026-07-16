@@ -1,0 +1,67 @@
+.moments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 620px) {
+  .moments-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.moment-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.moment-card--lavender {
+  border-top-color: var(--lavender-strong);
+}
+
+.moment-card--pink {
+  border-top-color: var(--pink-strong);
+}
+
+.moment-card--mint {
+  border-top-color: var(--mint-strong);
+}
+
+.moment-card--gold {
+  border-top-color: var(--gold-strong);
+}
+
+.moment-card--future {
+  opacity: 0.75;
+}
+
+.moment-icon {
+  font-size: 28px;
+}
+
+.moment-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.moment-counter {
+  margin: 4px 0;
+  font-size: clamp(16px, 4vw, 20px);
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.moment-detail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}

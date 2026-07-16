@@ -1,0 +1,45 @@
+// Ported from personal/lovissimi's tickets feature (public/tickets/js +
+// server/tickets/constants.js) — same statuses/options, insieme's own design.
+export const TICKET_STATUS = {
+  RECEIVED: 'Received 💌',
+  READING: 'Reading with care 👀',
+  DEBUGGING: 'Emotional debugging 🛠️',
+  AWAITING: 'Awaiting confirmation 💛',
+  VALIDATED: 'Confirmed solved 🌟',
+  HANDLED: 'Handled ✅',
+};
+
+export const OPEN_STATUSES = [TICKET_STATUS.RECEIVED, TICKET_STATUS.READING, TICKET_STATUS.DEBUGGING];
+
+// Matches insieme's login casing ('Principe'/'Principessa'), not lovissimi's
+// lowercase account roles — the ticket's `createdBy` is just the logged-in user.
+export const ACCOUNT_ROLES = ['Principe', 'Principessa'];
+
+export const CATEGORY_OPTIONS = [
+  'Just expressing',
+  'Need reassurance and comforting',
+  'Need you present',
+  'Need help with this',
+  'Need affection and love',
+  'Other',
+];
+
+export const PRIORITY_OPTIONS = [
+  'P5 - tiny feeling',
+  'P4 - attention needed',
+  'P3 - medium emotional damage',
+  'P2 - need reassurance',
+  'P1 - need my bestfriend',
+];
+
+export const REPLY_STYLE_OPTIONS = [
+  'Soft and sweet',
+  'Serious and direct',
+  'Funny and cute',
+  'Very reassuring',
+  'Voice-note energy',
+];
+
+export function otherAccount(role) {
+  return role === 'Principe' ? 'Principessa' : 'Principe';
+}

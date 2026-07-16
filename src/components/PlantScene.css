@@ -1,0 +1,19 @@
+.plant-scene-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.plant-bird {
+  animation: bird-bob 2.2s ease-in-out infinite;
+}
+
+@keyframes bird-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
