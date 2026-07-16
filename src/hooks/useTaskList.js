@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { applyPenalty } from '../lib/growth.js';
 
 let idCounter = 0;
 function makeId() {
@@ -33,7 +34,12 @@ function saveState(storageKey, state) {
   }
 }
 
-export function useTaskList(storageKey, defaultTasks) {
+// rewardForIndex(index) — the XP a task at this position (0-based) is worth;
+// escalates the deeper into the list you commit, so a fuller list is worth
+// more but also risks more. penaltyRate scales what locking in and not
+// finishing costs you, as a fraction of that same reward (1 = lose it all,
+// 0.5 = lose half) — the deterrent for over-committing.
+export function useTaskList(storageKey, defaultTasks, { rewardForIndex, penaltyRate = 1 }) {
   const [state, setState] = useState(() => loadState(storageKey, defaultTasks));
 
   useEffect(() => {
@@ -43,10 +49,7 @@ export function useTaskList(storageKey, defaultTasks) {
   function addTask(overrides = {}) {
     setState((prev) => ({
       ...prev,
-      tasks: [
-        ...prev.tasks,
-        { id: makeId(), label: 'New task', xp: 10, due: '', done: false, ...overrides },
-      ],
+      tasks: [...prev.tasks, { id: makeId(), label: 'New task', due: '', done: false, ...overrides }],
     }));
   }
 
@@ -72,22 +75,32 @@ export function useTaskList(storageKey, defaultTasks) {
     setState((prev) => ({ ...prev, locked: true }));
   }
 
+  // Anything locked in but left unfinished costs you XP here, right before
+  // it resets — the whole point of locking in is that it's a real commitment.
   function unlock() {
-    setState((prev) => ({
-      ...prev,
-      locked: false,
-      tasks: prev.tasks.map((task) => ({ ...task, done: false })),
-    }));
+    setState((prev) => {
+      if (prev.locked) {
+        prev.tasks.forEach((task, index) => {
+          if (!task.done) applyPenalty(Math.round(rewardForIndex(index) * penaltyRate));
+        });
+      }
+      return {
+        ...prev,
+        locked: false,
+        tasks: prev.tasks.map((task) => ({ ...task, done: false })),
+      };
+    });
   }
 
   const earned = state.locked
-    ? state.tasks.reduce((acc, task) => (task.done ? acc + task.xp : acc), 0)
+    ? state.tasks.reduce((acc, task, index) => (task.done ? acc + rewardForIndex(index) : acc), 0)
     : 0;
 
   return {
     tasks: state.tasks,
     locked: state.locked,
     earned,
+    rewardForIndex,
     addTask,
     updateTask,
     removeTask,

@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { useTaskList } from '../hooks/useTaskList.js';
 import { usePeekTasks } from '../hooks/usePeekTasks.js';
-import { awardGrowth, getGrowthState, canAwardMonthlyLock, MONTHLY_LOCK_BONUS_XP } from '../lib/growth.js';
+import {
+  awardGrowth,
+  getGrowthState,
+  canAwardMonthlyLock,
+  MONTHLY_LOCK_BONUS_XP,
+  useGrowth,
+  levelProgress,
+  stageForLevel,
+  currentMultiplier,
+  MAX_LEVEL,
+} from '../lib/growth.js';
+import NidoScene from '../components/NidoScene.jsx';
 import './HomePage.css';
 
 // How much each completed task nudges its matching Plant factor, on top of
@@ -12,33 +23,38 @@ const FACTOR_GAIN = {
   bees: 12,
 };
 
-const DEFAULT_PERSONAL = [
-  { label: '30 minutes on your own project', xp: 20 },
-  { label: '10-minute stretch or walk', xp: 10 },
-  { label: 'Read a few pages of something just for you', xp: 10 },
-];
+// Cleared to empty so both of you start adding your own — nothing seeded.
+const DEFAULT_PERSONAL = [];
+const DEFAULT_RELATIONSHIP = [];
+const DEFAULT_MONTHLY_SHARED = [];
+const DEFAULT_MONTHLY_PERSONAL = [];
 
-const DEFAULT_RELATIONSHIP = [
-  { label: 'Have one phone-free conversation', xp: 15 },
-  { label: 'Send one kind, unprompted text', xp: 10 },
-  { label: 'Ask how their day actually went', xp: 10 },
-];
+// Reward escalates by position — the deeper into a list you lock in, the
+// more each task is worth, so filling the list out is a bigger commitment
+// with a bigger payoff. Monthly goals use a steeper step since they're the
+// bigger, rarer efforts (see growth.js's Bees comment). Only a task's name
+// is player-editable — the reward is always position-driven, never chosen.
+const DAILY_REWARD_BASE = 10;
+const DAILY_REWARD_STEP = 5;
+const MONTHLY_REWARD_BASE = 25;
+const MONTHLY_REWARD_STEP = 15;
 
-const DEFAULT_MONTHLY_SHARED = [{ label: 'Plan one date night', due: 'By Jul 31', xp: 50 }];
+function dailyReward(index) {
+  return DAILY_REWARD_BASE + DAILY_REWARD_STEP * index;
+}
 
-const DEFAULT_MONTHLY_PERSONAL = [
-  { label: 'Finish something you started for yourself', due: 'By Jul 31', xp: 35 },
-  { label: 'Check in on your own goal for the month', due: 'By Jul 31', xp: 25 },
-];
+function monthlyReward(index) {
+  return MONTHLY_REWARD_BASE + MONTHLY_REWARD_STEP * index;
+}
 
-// Reward values for any newly added task, per category — configured here in
-// code, not by the player. Only a task's name is player-editable.
-const NEW_TASK_REWARDS = {
-  personal: { xp: 10 },
-  relationship: { xp: 10 },
-  monthlyShared: { xp: 25, due: 'This month' },
-  monthlyPersonal: { xp: 25, due: 'This month' },
-};
+// Locking in a task and not finishing it costs you XP instead of earning
+// nothing — a real deterrent against over-committing. Relationship tasks
+// depend on someone else showing up too, not just you, so their penalty is
+// only half as harsh as everywhere else.
+const PENALTY_RATE = 1;
+const RELATIONSHIP_PENALTY_RATE = 0.5;
+
+const NEW_TASK_DUE = { monthlyShared: 'This month', monthlyPersonal: 'This month' };
 
 const MAX_TASKS = 3;
 const MAX_MONTHLY_SHARED = 1;
@@ -47,18 +63,38 @@ const MAX_MONTHLY_PERSONAL = 2;
 export default function HomePage({ user }) {
   const otherName = user === 'Principe' ? 'Principessa' : 'Principe';
 
-  const personal = useTaskList(`insieme-personal-${user}`, DEFAULT_PERSONAL);
-  const relationship = useTaskList('insieme-relationship-tasks', DEFAULT_RELATIONSHIP);
-  const monthlyShared = useTaskList('insieme-monthly-shared', DEFAULT_MONTHLY_SHARED);
-  const monthlyPersonal = useTaskList(`insieme-monthly-personal-${user}`, DEFAULT_MONTHLY_PERSONAL);
+  // Renaming these keys resets everyone to a clean slate (empty lists, no
+  // locked-in progress) on next load, since there's no server-side task data
+  // to reset instead. Last changed for the Insieme → Lovissimi rename.
+  const personal = useTaskList(`lovissimi-personal-${user}`, DEFAULT_PERSONAL, {
+    rewardForIndex: dailyReward,
+    penaltyRate: PENALTY_RATE,
+  });
+  const relationship = useTaskList('lovissimi-relationship-tasks', DEFAULT_RELATIONSHIP, {
+    rewardForIndex: dailyReward,
+    penaltyRate: RELATIONSHIP_PENALTY_RATE,
+  });
+  const monthlyShared = useTaskList('lovissimi-monthly-shared', DEFAULT_MONTHLY_SHARED, {
+    rewardForIndex: monthlyReward,
+    penaltyRate: PENALTY_RATE,
+  });
+  const monthlyPersonal = useTaskList(`lovissimi-monthly-personal-${user}`, DEFAULT_MONTHLY_PERSONAL, {
+    rewardForIndex: monthlyReward,
+    penaltyRate: PENALTY_RATE,
+  });
 
   const [peekingPersonal, setPeekingPersonal] = useState(false);
-  const otherPersonalSnapshot = usePeekTasks(`insieme-personal-${otherName}`, peekingPersonal);
+  const otherPersonalSnapshot = usePeekTasks(`lovissimi-personal-${otherName}`, peekingPersonal);
 
   const [peekingMonthly, setPeekingMonthly] = useState(false);
-  const otherMonthlySnapshot = usePeekTasks(`insieme-monthly-personal-${otherName}`, peekingMonthly);
+  const otherMonthlySnapshot = usePeekTasks(`lovissimi-monthly-personal-${otherName}`, peekingMonthly);
 
   const todayEarned = personal.earned + relationship.earned;
+
+  const growth = useGrowth();
+  const { level } = levelProgress(growth.totalXp);
+  const stage = stageForLevel(level);
+  const multiplier = currentMultiplier(growth);
 
   // Locking in a goal is worth a little XP on its own, before it's done —
   // but only the first lock per list per calendar month counts, so
@@ -80,15 +116,19 @@ export default function HomePage({ user }) {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1>Home</h1>
-        <p>Today's focus, and where you're headed this month.</p>
-      </div>
-
-      <div className="earned-strip">
-        <span className="earned-label">Today so far</span>
-        <span className="earned-pill">✨ {todayEarned} XP</span>
-      </div>
+      <section className="nido-hero" aria-label="Greeting">
+        <NidoScene />
+        <div className="nido-hero-inner">
+          <p className="nido-eyebrow">Il vostro nido</p>
+          <h1>Buongiorno, {user}</h1>
+          <p className="nido-sub">Today's focus, and where you're headed this month.</p>
+          <div className="nido-badges">
+            <span className="nido-badge">{stage.icon} {stage.label} · Lv. {level} / {MAX_LEVEL}</span>
+            <span className="nido-badge">⚡ Growth {multiplier}×</span>
+            <span className="nido-badge">✨ Today {todayEarned} XP</span>
+          </div>
+        </div>
+      </section>
 
       <div className="daily-grid">
         <div className="task-card task-card--lavender">
@@ -103,16 +143,12 @@ export default function HomePage({ user }) {
             <PeekView
               otherName={otherName}
               snapshot={otherPersonalSnapshot}
+              rewardForIndex={dailyReward}
               emptyMessage={`${otherName} hasn't set up personal tasks yet.`}
               pendingMessage={`${otherName} is still setting up today's tasks.`}
             />
           ) : (
-            <TaskListBody
-              list={personal}
-              factor="water"
-              addPlaceholder="Add a personal task"
-              newTaskDefaults={NEW_TASK_REWARDS.personal}
-            />
+            <TaskListBody list={personal} factor="water" addPlaceholder="Add a personal task" />
           )}
         </div>
 
@@ -125,7 +161,6 @@ export default function HomePage({ user }) {
             list={relationship}
             factor="sun"
             addPlaceholder="Add a relationship task"
-            newTaskDefaults={NEW_TASK_REWARDS.relationship}
             maxTasks={MAX_TASKS}
           />
         </div>
@@ -143,7 +178,7 @@ export default function HomePage({ user }) {
             factor="bees"
             showDue
             addPlaceholder="Add your shared goal"
-            newTaskDefaults={NEW_TASK_REWARDS.monthlyShared}
+            newTaskDefaults={NEW_TASK_DUE.monthlyShared}
             maxTasks={MAX_MONTHLY_SHARED}
             onLock={() => handleLockMonthly(monthlyShared, 'monthly-lock-shared')}
           />
@@ -161,6 +196,7 @@ export default function HomePage({ user }) {
               otherName={otherName}
               snapshot={otherMonthlySnapshot}
               showDue
+              rewardForIndex={monthlyReward}
               emptyMessage={`${otherName} hasn't set up personal goals yet.`}
               pendingMessage={`${otherName} is still setting up this month's goals.`}
             />
@@ -170,7 +206,7 @@ export default function HomePage({ user }) {
               factor="bees"
               showDue
               addPlaceholder="Add a personal goal"
-              newTaskDefaults={NEW_TASK_REWARDS.monthlyPersonal}
+              newTaskDefaults={NEW_TASK_DUE.monthlyPersonal}
               maxTasks={MAX_MONTHLY_PERSONAL}
               onLock={() => handleLockMonthly(monthlyPersonal, `monthly-lock-personal-${user}`)}
             />
@@ -184,11 +220,11 @@ export default function HomePage({ user }) {
 function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, maxTasks = MAX_TASKS, onLock }) {
   const atCap = list.tasks.length >= maxTasks;
 
-  function handleToggle(task) {
+  function handleToggle(task, index) {
     // Only awards on the not-done -> done transition, and never reverses on
     // uncheck, so toggling back and forth can't be used to farm Plant growth.
     if (!task.done) {
-      awardGrowth({ xp: task.xp, factor, factorGain: FACTOR_GAIN[factor] || 0 });
+      awardGrowth({ xp: list.rewardForIndex(index), factor, factorGain: FACTOR_GAIN[factor] || 0 });
     }
     list.toggleTask(task.id);
   }
@@ -207,13 +243,20 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
       </div>
 
       <ul className="task-list">
-        {list.tasks.map((task) =>
+        {list.tasks.map((task, index) =>
           list.locked ? (
-            <TaskRow key={task.id} task={task} onToggle={() => handleToggle(task)} showDue={showDue} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              reward={list.rewardForIndex(index)}
+              onToggle={() => handleToggle(task, index)}
+              showDue={showDue}
+            />
           ) : (
             <EditableTaskRow
               key={task.id}
               task={task}
+              reward={list.rewardForIndex(index)}
               showDue={showDue}
               onChange={(patch) => list.updateTask(task.id, patch)}
               onRemove={() => list.removeTask(task.id)}
@@ -240,7 +283,7 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
       <div className="lock-row">
         {list.locked ? (
           <button type="button" className="unlock-btn" onClick={list.unlock}>
-            🔓 Unlock to edit (resets progress)
+            🔓 Unlock to edit (resets progress, penalizes anything unfinished)
           </button>
         ) : (
           <button
@@ -257,7 +300,7 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
   );
 }
 
-function EditableTaskRow({ task, showDue, onChange, onRemove }) {
+function EditableTaskRow({ task, reward, showDue, onChange, onRemove }) {
   return (
     <li className="task-row task-row--editable">
       <input
@@ -277,7 +320,7 @@ function EditableTaskRow({ task, showDue, onChange, onRemove }) {
         />
       )}
       <div className="task-edit-rewards">
-        <span className="reward-tag">+{task.xp} XP</span>
+        <span className="reward-tag">+{reward} XP</span>
         <button type="button" className="task-remove-btn" onClick={onRemove} aria-label={`Remove "${task.label}"`}>
           ✕
         </button>
@@ -286,7 +329,7 @@ function EditableTaskRow({ task, showDue, onChange, onRemove }) {
   );
 }
 
-function TaskRow({ task, onToggle, showDue, readOnly }) {
+function TaskRow({ task, reward, onToggle, showDue, readOnly }) {
   return (
     <li className={`task-row${task.done ? ' is-done' : ''}`}>
       <button
@@ -304,13 +347,13 @@ function TaskRow({ task, onToggle, showDue, readOnly }) {
         {showDue && task.due && <span className="task-due">{task.due}</span>}
       </div>
       <div className="task-rewards">
-        <span className="reward-tag">+{task.xp} XP</span>
+        <span className="reward-tag">+{reward} XP</span>
       </div>
     </li>
   );
 }
 
-function PeekView({ otherName, snapshot, showDue, emptyMessage, pendingMessage }) {
+function PeekView({ otherName, snapshot, showDue, rewardForIndex, emptyMessage, pendingMessage }) {
   if (!snapshot) {
     return <p className="peek-note">Loading {otherName}'s tasks…</p>;
   }
@@ -321,7 +364,10 @@ function PeekView({ otherName, snapshot, showDue, emptyMessage, pendingMessage }
     return <p className="peek-note">{pendingMessage}</p>;
   }
 
-  const earned = snapshot.tasks.reduce((acc, task) => (task.done ? acc + task.xp : acc), 0);
+  const earned = snapshot.tasks.reduce(
+    (acc, task, index) => (task.done ? acc + rewardForIndex(index) : acc),
+    0
+  );
 
   return (
     <>
@@ -330,8 +376,8 @@ function PeekView({ otherName, snapshot, showDue, emptyMessage, pendingMessage }
         <span className="earned-pill">✨ {earned} XP</span>
       </div>
       <ul className="task-list">
-        {snapshot.tasks.map((task) => (
-          <TaskRow key={task.id} task={task} showDue={showDue} readOnly />
+        {snapshot.tasks.map((task, index) => (
+          <TaskRow key={task.id} task={task} reward={rewardForIndex(index)} showDue={showDue} readOnly />
         ))}
       </ul>
     </>

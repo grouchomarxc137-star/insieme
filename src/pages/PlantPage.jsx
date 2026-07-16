@@ -7,13 +7,16 @@ import {
   STAGES,
   MAX_LEVEL,
   QUICK_LOGS,
-  canQuickLog,
-  awardGrowth,
+  getQuickLogConfirmations,
+  confirmQuickLog,
+  removeQuickLogConfirmation,
   currentMultiplier,
   MULTIPLIER_FLOOR,
   MULTIPLIER_SPAN,
 } from '../lib/growth.js';
 import './PlantPage.css';
+
+const PARTICIPANTS = ['Principe', 'Principessa'];
 
 const FACTORS = [
   {
@@ -65,7 +68,8 @@ const FACTORS = [
   },
 ];
 
-export default function PlantPage() {
+export default function PlantPage({ user }) {
+  const otherName = user === 'Principe' ? 'Principessa' : 'Principe';
   const growth = useGrowth();
   const multiplier = currentMultiplier(growth);
   const multiplierPct = Math.round(((multiplier - MULTIPLIER_FLOOR) / MULTIPLIER_SPAN) * 100);
@@ -79,8 +83,12 @@ export default function PlantPage() {
   const openFactor = FACTORS.find((factor) => factor.id === openFactorId) || null;
 
   function handleQuickLog(entry) {
-    if (!canQuickLog(growth, entry.id)) return;
-    awardGrowth({ xp: entry.xp, factor: entry.factor, factorGain: entry.factorGain, logId: entry.id });
+    confirmQuickLog(user, entry);
+    growth.refresh();
+  }
+
+  function handleRemoveConfirmation(entryId, side) {
+    removeQuickLogConfirmation(entryId, side);
     growth.refresh();
   }
 
@@ -184,26 +192,48 @@ export default function PlantPage() {
       <div className="factors-card">
         <h2>Log it</h2>
         <p className="factors-hint">
-          For the parts that aren't real features yet — tap when it actually happened. Once per day, each.
+          For the parts that aren't real features yet — tap when it actually happened. Always available; the XP
+          only lands once both of you have confirmed the same one.
         </p>
         <div className="factor-list">
           {QUICK_LOGS.map((entry) => {
-            const available = canQuickLog(growth, entry.id);
+            const confirmations = getQuickLogConfirmations(entry.id);
+            const youConfirmed = Boolean(confirmations[user]);
+            const otherConfirmed = Boolean(confirmations[otherName]);
+            let status = `+${entry.xp} XP`;
+            if (youConfirmed && !otherConfirmed) status = `Waiting on ${otherName}`;
+            else if (otherConfirmed && !youConfirmed) status = `${otherName} confirmed — tap to match`;
             return (
-              <button
-                type="button"
-                key={entry.id}
-                className="quick-log-row"
-                disabled={!available}
-                onClick={() => handleQuickLog(entry)}
-              >
-                <span className="factor-icon">{entry.icon}</span>
-                <span className="quick-log-body">
-                  <span className="factor-label quick-log-label">{entry.label}</span>
-                  <span className="quick-log-description">{entry.description}</span>
-                </span>
-                <span className="quick-log-status">{available ? `+${entry.xp} XP` : 'Logged today ✓'}</span>
-              </button>
+              <div key={entry.id} className="quick-log-row">
+                <button type="button" className="quick-log-main" onClick={() => handleQuickLog(entry)}>
+                  <span className="factor-icon">{entry.icon}</span>
+                  <span className="quick-log-body">
+                    <span className="factor-label quick-log-label">{entry.label}</span>
+                    <span className="quick-log-description">{entry.description}</span>
+                  </span>
+                  <span className="quick-log-status">{status}</span>
+                </button>
+                <div className="quick-log-sides">
+                  {PARTICIPANTS.map((side) => {
+                    const confirmed = Boolean(confirmations[side]);
+                    return (
+                      <span key={side} className={`quick-log-side${confirmed ? ' is-confirmed' : ''}`}>
+                        {side} {confirmed ? '✓' : '—'}
+                        {confirmed && (
+                          <button
+                            type="button"
+                            className="quick-log-side-remove"
+                            aria-label={`Remove ${side}'s confirmation for "${entry.label}"`}
+                            onClick={() => handleRemoveConfirmation(entry.id, side)}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>

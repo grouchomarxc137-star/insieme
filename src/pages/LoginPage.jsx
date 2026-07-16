@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import BrandMark from '../components/BrandMark.jsx';
 import './LoginPage.css';
 
 const PEOPLE = ['Principe', 'Principessa'];
@@ -26,7 +27,10 @@ export default function LoginPage({ onLogin }) {
   return (
     <div className="login-shell">
       <form className="login-card" onSubmit={handleSubmit}>
-        <div className="login-brand pixel-font">👑💛 Insieme</div>
+        <div className="login-brand pixel-font">
+          <BrandMark size={34} />
+          <span>Lovissimi</span>
+        </div>
         <h1>Who's this?</h1>
         <p>Pick your person and enter the password to see your character.</p>
 

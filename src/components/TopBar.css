@@ -19,16 +19,17 @@
 .topbar-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 18px;
+  gap: 7px;
   color: var(--text);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-.topbar-brand-mark {
-  font-size: 18px;
+.topbar-brand-name {
+  font-size: 21px;
+  font-weight: 800;
   line-height: 1;
+  padding-top: 2px;
 }
 
 .topbar-nav {

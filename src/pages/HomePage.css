@@ -1,24 +1,103 @@
-.earned-strip {
+/* ── Il nido hero ─────────────────────────── */
+.nido-hero {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: linear-gradient(180deg, #cfe9ee 0%, #e3f0e9 46%, #fdf0d2 100%);
+  border: 2px solid var(--text);
+  box-shadow: 0 4px 0 var(--text);
+}
+
+.nido-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.nido-hero-inner {
+  padding: 4px 24px 22px;
+}
+
+.nido-eyebrow {
+  margin: 0;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--arancia-strong);
+}
+
+.nido-hero-inner h1 {
+  margin: 0 0 2px;
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.05;
+}
+
+.nido-sub {
+  margin: 0;
+  max-width: 50ch;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #6b543f;
+}
+
+.nido-badges {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 14px;
   flex-wrap: wrap;
 }
 
-.earned-label {
-  font-size: 13px;
-  color: var(--text-muted);
-  font-weight: 700;
+.nido-badge {
+  font-weight: 800;
+  font-size: 12.5px;
+  background: var(--surface);
+  border: 1.5px solid var(--text);
+  border-radius: 999px;
+  padding: 5px 12px;
+  box-shadow: 0 2px 0 var(--text);
+  white-space: nowrap;
+}
+
+.nido-heart {
+  animation: nido-pop 0.7s cubic-bezier(0.34, 1.7, 0.5, 1) 0.35s both;
+  transform-origin: 440px 128px;
+}
+
+.nido-bird {
+  animation: nido-breathe 4s ease-in-out infinite;
+  transform-origin: 330px 190px;
+}
+
+.nido-bird--east {
+  transform-origin: 550px 190px;
+  animation-delay: -2s;
+}
+
+@keyframes nido-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes nido-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nido-heart,
+  .nido-bird {
+    animation: none;
+  }
 }
 
 .earned-pill {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--text);
   border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 4px 11px;
+  font-size: 12px;
   font-weight: 800;
-  box-shadow: var(--shadow-soft);
   white-space: nowrap;
 }
 
@@ -36,22 +115,22 @@
 
 .task-card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 4px solid transparent;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border: 2px solid var(--text);
+  border-radius: 22px;
+  box-shadow: 0 4px 0 var(--text);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.task-card--lavender {
-  border-top-color: var(--lavender-strong);
+/* category color lives in the subtitle eyebrow, not a border strip */
+.task-card--lavender .task-card-subtitle {
+  color: var(--gold-strong);
 }
 
-.task-card--pink {
-  border-top-color: var(--pink-strong);
+.task-card--pink .task-card-subtitle {
+  color: var(--arancia-strong);
 }
 
 .task-card-header {
@@ -101,10 +180,9 @@
 
 .monthly-card {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 4px solid var(--gold);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border: 2px solid var(--text);
+  border-radius: 22px;
+  box-shadow: 0 4px 0 var(--text);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -185,9 +263,9 @@
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 2px solid var(--border);
-  background: var(--surface);
-  color: #fff;
+  border: 2px solid var(--text);
+  background: #fff;
+  color: var(--text);
   font-weight: 800;
   cursor: pointer;
   display: flex;
@@ -201,8 +279,7 @@
 }
 
 .task-row.is-done .task-checkbox {
-  background: var(--mint-strong);
-  border-color: var(--mint-strong);
+  background: var(--gold);
 }
 
 .task-card-status {
@@ -223,9 +300,9 @@
 }
 
 .lock-badge--locked {
-  background: #eaf6ec;
+  background: #edf3d9;
   border-color: var(--mint-strong);
-  color: #3f7a55;
+  color: #5f7a3f;
 }
 
 .task-row--editable {
@@ -309,18 +386,20 @@
 }
 
 .lock-btn {
-  background: var(--gold);
-  border: 1px solid var(--gold-strong);
-  color: #5b4620;
+  background: var(--text);
+  border: 2px solid var(--text);
+  color: var(--surface);
   font-weight: 800;
   font-size: 13px;
   padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .lock-btn:hover:not(:disabled) {
-  background: var(--gold-strong);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .lock-btn:disabled {
@@ -329,19 +408,20 @@
 }
 
 .unlock-btn {
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  background: none;
+  border: 1.5px solid var(--text);
+  color: var(--text);
   font-weight: 700;
   font-size: 12px;
   padding: 6px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .unlock-btn:hover {
-  background: var(--pink);
-  color: var(--text);
+  background: var(--text);
+  color: var(--surface);
 }
 
 .task-info {
@@ -371,11 +451,16 @@
 .reward-tag {
   font-size: 11px;
   font-weight: 800;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #fbd98a, var(--gold));
+  border: 1.5px solid var(--text);
   border-radius: 999px;
-  padding: 3px 8px;
-  color: var(--text-muted);
+  padding: 3px 9px;
+  color: var(--text);
   white-space: nowrap;
+}
+
+/* the yellow heart from the logo, carried into every reward */
+.reward-tag::before {
+  content: '♥ ';
 }
 

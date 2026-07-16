@@ -32,7 +32,7 @@ const PAGES = {
   checkin: CheckInPage,
 };
 
-const AUTH_STORAGE_KEY = 'insieme-user';
+const AUTH_STORAGE_KEY = 'lovissimi-user';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');

@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'insieme-growth';
+// Changing this key is what performs a "reset to a clean slate" — every
+// device picks up DEFAULT_STATE fresh on next load instead of continuing
+// from whatever XP/meters had already accumulated (there's no server-side
+// stats store to reset). Last changed for the Insieme → Lovissimi rename.
+const STORAGE_KEY = 'lovissimi-growth';
 // 50 levels = 5 character stages of 10 (the 5th, Principe/Principessa, is the
 // true endgame beyond the original 40-level/4-stage design).
 export const MAX_LEVEL = 50;
@@ -29,8 +33,10 @@ export const FACTOR_CONFIG = {
 };
 
 // Manual "this happened" buttons for the parts of the system that don't have
-// a real feature behind them yet (Check-in, Reset Room, Tickets). Capped at
-// once per real-world day per action so they can't be spammed for free XP.
+// a real feature behind them yet (Check-in, Reset Room, Tickets). Never
+// disabled/locked — instead each one needs both Principe and Principessa to
+// separately confirm it before the XP actually lands, see
+// confirmQuickLog() below.
 export const QUICK_LOGS = [
   {
     id: 'checkin',
@@ -61,13 +67,17 @@ export const QUICK_LOGS = [
   },
 ];
 
+// A true clean slate: water/sun/bees rise from actually doing real tasks, so
+// they start at 0 — nothing's been built yet. Air/toxicity track friction,
+// and no time has passed for any to accumulate, so they start perfect (air
+// 100, toxicity 0) rather than pre-loaded with either damage or credit.
 const DEFAULT_STATE = {
   totalXp: 0,
-  water: 65,
-  sun: 80,
-  air: 90,
-  toxicity: 10,
-  bees: 40,
+  water: 0,
+  sun: 0,
+  air: 100,
+  toxicity: 0,
+  bees: 0,
   lastUpdate: new Date().toISOString(),
   lastLogged: {},
 };
@@ -193,7 +203,8 @@ export function getGrowthState() {
 // scaled by the current multiplier. factorGain nudges the matching meter
 // (negative gains are valid, e.g. toxicity falling) and is never scaled —
 // only the XP conversion rate depends on the elements, not the meters
-// themselves. logId, if given, stamps a same-day cooldown.
+// themselves. logId, if given, stamps a same-day cooldown (still used by the
+// monthly lock-in bonus below).
 export function awardGrowth({ xp, factor, factorGain = 0, logId }) {
   const state = applyDecay(loadState());
   const multiplier = currentMultiplier(state);
@@ -209,13 +220,16 @@ export function awardGrowth({ xp, factor, factorGain = 0, logId }) {
   return next;
 }
 
-function isSameDay(isoA, isoB) {
-  return isoA && isoB && isoA.slice(0, 10) === isoB.slice(0, 10);
-}
-
-export function canQuickLog(state, logId) {
-  const last = state.lastLogged?.[logId];
-  return !isSameDay(last, new Date().toISOString());
+// Locking in a task you don't finish costs you XP instead of just earning
+// nothing, so committing to more than you'll actually do has a real cost.
+// Flat, unscaled by the multiplier on purpose — the multiplier rewards a
+// healthy relationship state, it shouldn't also soften the deterrent for not
+// following through. Floors at 0 totalXp rather than going negative.
+export function applyPenalty(xp) {
+  const state = applyDecay(loadState());
+  const next = { ...state, totalXp: Math.max(0, state.totalXp - xp) };
+  saveState(next);
+  return next;
 }
 
 // Committing to a monthly goal is worth a little XP on its own, before it's
@@ -256,4 +270,72 @@ export function useGrowth() {
   }, []);
 
   return { ...state, refresh };
+}
+
+// Quick logs need both of you to separately confirm the same real-world
+// event before its XP lands — one person tapping "we did a check-in" isn't
+// enough on its own. Pending confirmations live in their own storage key
+// (never disabled/locked, per QUICK_LOGS above) and get cleared the moment
+// both sides have confirmed, so the button is immediately ready for the next
+// occurrence instead of staying "used up".
+const QUICK_LOG_PENDING_KEY = 'lovissimi-quicklog-pending';
+
+function loadQuickLogPending() {
+  try {
+    const raw = localStorage.getItem(QUICK_LOG_PENDING_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* corrupt or unavailable storage, fall back to empty */
+  }
+  return {};
+}
+
+function saveQuickLogPending(pending) {
+  try {
+    localStorage.setItem(QUICK_LOG_PENDING_KEY, JSON.stringify(pending));
+  } catch {
+    /* storage unavailable, confirmation just won't persist */
+  }
+}
+
+export function getQuickLogConfirmations(logId) {
+  return loadQuickLogPending()[logId] || {};
+}
+
+// Records this user's confirmation for the entry. If the other person had
+// already confirmed, this is the completing tap: awards the entry's XP,
+// nudges its factor, and resets the pending state for next time. Returns the
+// updated confirmations plus whether this call was the one that completed it.
+export function confirmQuickLog(user, entry) {
+  const pending = loadQuickLogPending();
+  const current = pending[entry.id] || {};
+
+  if (current[user]) {
+    return { confirmations: current, justCompleted: false };
+  }
+
+  const next = { ...current, [user]: true };
+  const otherUser = user === 'Principe' ? 'Principessa' : 'Principe';
+
+  if (next[otherUser]) {
+    saveQuickLogPending({ ...pending, [entry.id]: {} });
+    awardGrowth({ xp: entry.xp, factor: entry.factor, factorGain: entry.factorGain });
+    return { confirmations: {}, justCompleted: true };
+  }
+
+  saveQuickLogPending({ ...pending, [entry.id]: next });
+  return { confirmations: next, justCompleted: false };
+}
+
+// Undoes a single side's confirmation — for correcting a mis-tap before the
+// other person confirms and the XP lands. Never awards or penalizes
+// anything, it just clears that one flag.
+export function removeQuickLogConfirmation(logId, side) {
+  const pending = loadQuickLogPending();
+  const current = pending[logId] || {};
+  if (!current[side]) return current;
+  const next = { ...current };
+  delete next[side];
+  saveQuickLogPending({ ...pending, [logId]: next });
+  return next;
 }

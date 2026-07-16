@@ -1,4 +1,5 @@
 import { TABS } from '../App.jsx';
+import BrandMark from './BrandMark.jsx';
 import './TopBar.css';
 
 export default function TopBar({ activeTab, onSelectTab, user, onLogout }) {
@@ -6,8 +7,8 @@ export default function TopBar({ activeTab, onSelectTab, user, onLogout }) {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-brand pixel-font">
-          <span className="topbar-brand-mark">👑💛</span>
-          <span className="topbar-brand-name">Insieme</span>
+          <BrandMark size={26} />
+          <span className="topbar-brand-name">Lovissimi</span>
         </div>
         <nav className="topbar-nav">
           {TABS.map((tab) => (

@@ -1,23 +1,28 @@
 :root {
-  --bg: #fbf6ef;
-  --surface: #ffffff;
-  --surface-alt: #fff9f2;
-  --border: #ede6da;
+  /* "Il nido" palette — warm honey/orange grounded in cacao brown. The old
+     pink/lavender token names are kept so every stylesheet keeps working;
+     their values now map to the apricot/miele families (no pink anywhere). */
+  --bg: #fdf4e3;
+  --surface: #fff8ea;
+  --surface-alt: #fbecd3;
+  --border: #e3cfa8;
 
-  --text: #4a4453;
-  --text-muted: #8a8296;
+  --text: #4a3428;
+  --text-muted: #97806f;
 
-  --pink: #f6c6d0;
-  --pink-strong: #f0a8ba;
-  --lavender: #d9cbee;
-  --lavender-strong: #c3adf0;
-  --mint: #bfe3d0;
-  --mint-strong: #8fcbae;
-  --gold: #f0c36b;
-  --gold-strong: #e0a83f;
+  --pink: #f8d7b0;
+  --pink-strong: #ecb277;
+  --lavender: #f6e3b4;
+  --lavender-strong: #e8c25c;
+  --mint: #e3ecc9;
+  --mint-strong: #8fb87a;
+  --gold: #f2b02e;
+  --gold-strong: #d99615;
+  --arancia: #e8804a;
+  --arancia-strong: #cf6531;
 
-  --sky-top: #dcebfa;
-  --sky-bottom: #fbf6ef;
+  --sky-top: #cfe9ee;
+  --sky-bottom: #fdf4e3;
 
   --skin: #e8bd8f;
   --hair: #8b6350;
@@ -27,7 +32,7 @@
   --tunic-dark: #7fa6d1;
   --legs: #6b5b73;
   --feet: #4a4453;
-  --crown: #f0c36b;
+  --crown: #f2b02e;
   --jewel: #f6a6b2;
   --jewel-principe: #5b8fc7;
   --cape-principe: #3f5a7a;
@@ -55,8 +60,9 @@
   --canopy-dark: #4f9a5c;
   --blossom: #f7d3de;
 
-  --shadow-soft: 0 4px 16px rgba(74, 68, 83, 0.08);
-  --shadow-card: 0 8px 24px rgba(74, 68, 83, 0.1);
+  --shadow-soft: 0 2px 8px rgba(74, 52, 40, 0.08);
+  /* flat "sticker" offset instead of a blur — part of the nido look */
+  --shadow-card: 0 4px 0 rgba(74, 52, 40, 0.22);
   --radius-lg: 28px;
   --radius-md: 18px;
   --radius-sm: 12px;
@@ -80,13 +86,14 @@ body {
   color: var(--text);
   font-family: 'Nunito', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  accent-color: var(--arancia);
 }
 
 h1,
 h2,
 h3,
 .pixel-font {
-  font-family: 'Pixelify Sans', 'Nunito', system-ui, sans-serif;
+  font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif;
 }
 
 button {

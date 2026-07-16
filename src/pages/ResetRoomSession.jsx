@@ -29,7 +29,7 @@ const SUFFICIENCY_LABEL = {
 const ROLES = { INITIATOR: 'initiator', RESPONDER: 'responder' };
 
 function storageKey(sessionId) {
-  return `insieme-reset-${sessionId}`;
+  return `lovissimi-reset-${sessionId}`;
 }
 
 function readStoredCreds(sessionId) {
