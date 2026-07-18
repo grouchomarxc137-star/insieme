@@ -36,6 +36,11 @@ function normalize(raw) {
   const base = createDefaultState();
   const state = { ...base, ...(raw || {}) };
   state.totalXp = Number.isFinite(state.totalXp) ? Math.max(0, Math.round(state.totalXp)) : 0;
+  state.personalXp =
+    state.personalXp && typeof state.personalXp === 'object' ? { ...state.personalXp } : { ...base.personalXp };
+  for (const p of PARTICIPANTS) {
+    state.personalXp[p] = Number.isFinite(state.personalXp[p]) ? Math.max(0, Math.round(state.personalXp[p])) : 0;
+  }
   for (const key of Object.keys(FACTOR_CONFIG)) {
     state[key] = Number.isFinite(state[key]) ? clampFactor(state[key]) : base[key];
   }
@@ -56,32 +61,38 @@ export function getState() {
   return { state: applyDecay(normalize(state)), seeded: true };
 }
 
-export function award({ xp, factor, factorGain = 0, logId }) {
+export function award({ xp, factor, factorGain = 0, logId, scope, user }) {
   const { state } = getState();
-  return save(applyAward(state, { xp, factor, factorGain, logId }));
+  return save(applyAward(state, { xp, factor, factorGain, logId, scope, user }));
 }
 
-export function penalize(xp) {
+export function penalize({ xp, scope, user }) {
   const { state } = getState();
-  return save(applyPenaltyToState(state, xp));
+  return save(applyPenaltyToState(state, xp, { scope, user }));
 }
 
-// Undoes an award for a task that got unchecked — same xp/factor/factorGain
-// the check-off used, just negated through applyAward so the factor lands
-// back exactly where it started. totalXp won't always net to exactly zero
-// over a check+uncheck (this factor's own gain nudges the multiplier the
-// second call reads), but a full cycle always starts and ends at the same
-// factor value, so repeated toggling can't be used to farm XP.
-export function unaward({ xp, factor, factorGain = 0 }) {
+// Undoes an award for a task that got unchecked — same xp/factor/factorGain/
+// scope/user the check-off used, just negated through applyAward so the
+// factor (and whichever pot got credited) lands back exactly where it
+// started. The credited pot won't always net to exactly zero over a
+// check+uncheck (this factor's own gain nudges the multiplier the second
+// call reads), but a full cycle always starts and ends at the same factor
+// value, so repeated toggling can't be used to farm XP.
+export function unaward({ xp, factor, factorGain = 0, scope, user }) {
   const { state } = getState();
-  const next = applyAward(state, { xp: -xp, factor, factorGain: -factorGain });
-  return save({ ...next, totalXp: Math.max(0, next.totalXp) });
+  const next = applyAward(state, { xp: -xp, factor, factorGain: -factorGain, scope, user });
+  if (scope === 'personal' && user) {
+    next.personalXp = { ...next.personalXp, [user]: Math.max(0, next.personalXp[user]) };
+  } else {
+    next.totalXp = Math.max(0, next.totalXp);
+  }
+  return save(next);
 }
 
 // The lock-in bonus for monthly goals — the once-per-list-per-calendar-month
 // rule is enforced here, on the shared state, so relocking from a second
 // device can't double-award it.
-export function monthlyLockBonus(logId, taskCount) {
+export function monthlyLockBonus(logId, taskCount, { scope, user } = {}) {
   const { state } = getState();
   if (taskCount <= 0 || !canAwardMonthlyLock(state, logId)) {
     return { state, awarded: false };
@@ -91,6 +102,8 @@ export function monthlyLockBonus(logId, taskCount) {
     factor: 'bees',
     factorGain: 4,
     logId,
+    scope,
+    user,
   });
   return { state: save(next), awarded: true };
 }

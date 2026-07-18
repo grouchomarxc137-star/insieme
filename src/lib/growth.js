@@ -20,6 +20,8 @@ export {
   currentMultiplier,
   MULTIPLIER_FLOOR,
   MULTIPLIER_SPAN,
+  plantXp,
+  characterXp,
 } from './growthModel.js';
 
 // The localStorage keys from before the server move — read once, only to
@@ -102,21 +104,25 @@ async function postGrowth(path, body) {
   return broadcast(await requestGrowth(path, body));
 }
 
-export function awardGrowth({ xp, factor, factorGain = 0 }) {
-  return postGrowth('/api/growth/award', { xp, factor, factorGain });
+// scope/user decide which pot the XP lands in — omit both (or pass
+// scope: 'shared') for the couple's shared pot, or pass scope: 'personal'
+// with user: 'Principe' | 'Principessa' for that person's own pot. See
+// growthModel.js's applyAward for the full split.
+export function awardGrowth({ xp, factor, factorGain = 0, scope, user }) {
+  return postGrowth('/api/growth/award', { xp, factor, factorGain, scope, user });
 }
 
-// Mirrors awardGrowth for a task getting unchecked — same xp/factor/factorGain
-// it was checked off with, so the credit gets undone instead of just letting
-// a re-check re-award on top of it.
-export function unawardGrowth({ xp, factor, factorGain = 0 }) {
-  return postGrowth('/api/growth/unaward', { xp, factor, factorGain });
+// Mirrors awardGrowth for a task getting unchecked — same
+// xp/factor/factorGain/scope/user it was checked off with, so the credit
+// gets undone instead of just letting a re-check re-award on top of it.
+export function unawardGrowth({ xp, factor, factorGain = 0, scope, user }) {
+  return postGrowth('/api/growth/unaward', { xp, factor, factorGain, scope, user });
 }
 
 // The server enforces the once-per-list-per-calendar-month rule, so calling
 // this on every lock is safe — it just won't award twice in a month.
-export function awardMonthlyLockBonus(logId, taskCount) {
-  return postGrowth('/api/growth/monthly-lock', { logId, taskCount });
+export function awardMonthlyLockBonus(logId, taskCount, { scope, user } = {}) {
+  return postGrowth('/api/growth/monthly-lock', { logId, taskCount, scope, user });
 }
 
 export function confirmQuickLog(user, logId) {

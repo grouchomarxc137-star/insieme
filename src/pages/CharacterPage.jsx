@@ -1,6 +1,13 @@
 import PixelCharacter from '../components/PixelCharacter.jsx';
 import DiscordSendPanel from '../components/DiscordSendPanel.jsx';
-import { useGrowth, levelProgress, characterStageForLevel, CHARACTER_STAGE_LEVELS, MAX_LEVEL } from '../lib/growth.js';
+import {
+  useGrowth,
+  levelProgress,
+  characterStageForLevel,
+  characterXp,
+  CHARACTER_STAGE_LEVELS,
+  MAX_LEVEL,
+} from '../lib/growth.js';
 import './CharacterPage.css';
 
 const STATUS_OPTIONS = [
@@ -47,7 +54,9 @@ const STAGE_LABELS = {
 export default function CharacterPage({ user }) {
   const gender = user === 'Principessa' ? 'principessa' : 'principe';
   const growth = useGrowth();
-  const { level, isMax, xpIntoLevel, xpForNext, progress } = levelProgress(growth.totalXp);
+  // Each person's own level: their personal-task XP plus the full shared pot
+  // (relationship/monthly-shared/quick-log XP counts for both of you).
+  const { level, isMax, xpIntoLevel, xpForNext, progress } = levelProgress(characterXp(growth, user));
   const stage = characterStageForLevel(level);
   const stageLabels = STAGE_LABELS[gender];
 
@@ -91,7 +100,7 @@ export default function CharacterPage({ user }) {
         </div>
       </div>
       <p className="xp-progress-note">
-        {isMax ? `Max level reached — ${growth.totalXp} XP total` : `${xpIntoLevel} / ${xpForNext} XP to next level`}
+        {isMax ? `Max level reached — ${characterXp(growth, user)} XP total` : `${xpIntoLevel} / ${xpForNext} XP to next level`}
       </p>
 
       <button type="button" className="customize-btn" disabled>

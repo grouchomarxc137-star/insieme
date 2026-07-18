@@ -49,20 +49,43 @@ const PENALTY_RATE = 1;
 const RELATIONSHIP_PENALTY_RATE = 0.5;
 
 const RELATIONSHIP_KEY = 'lovissimi-relationship-tasks';
+const MONTHLY_SHARED_KEY = 'lovissimi-monthly-shared';
+const PERSONAL_PREFIX = 'lovissimi-personal-';
+const MONTHLY_PERSONAL_PREFIX = 'lovissimi-monthly-personal-';
 
-// Every list key follows one of three shapes (see HomePage.jsx): per-user
-// daily ("lovissimi-personal-<name>"), the one shared daily list, or a
-// monthly list (shared or per-user, both prefixed "lovissimi-monthly-").
-// Deriving config from the key itself means the server never needs the
-// client to separately declare which rules apply to a list it's storing.
+// Every list key follows one of four shapes (see HomePage.jsx): per-user
+// daily ("lovissimi-personal-<name>"), the one shared daily list, the one
+// shared monthly list, or a per-user monthly list. Deriving config from the
+// key itself means the server never needs the client to separately declare
+// which rules apply to a list it's storing — including who XP from it should
+// credit: `scope: 'personal'` lists also carry the `user` it belongs to, so
+// award/penalty calls know which of the two pots to touch.
 export function configForListKey(key) {
-  if (key.startsWith('lovissimi-monthly-')) {
-    return { period: 'month', rewardForIndex: monthlyReward, penaltyRate: PENALTY_RATE };
+  if (key === MONTHLY_SHARED_KEY) {
+    return { period: 'month', rewardForIndex: monthlyReward, penaltyRate: PENALTY_RATE, scope: 'shared' };
+  }
+  if (key.startsWith(MONTHLY_PERSONAL_PREFIX)) {
+    return {
+      period: 'month',
+      rewardForIndex: monthlyReward,
+      penaltyRate: PENALTY_RATE,
+      scope: 'personal',
+      user: key.slice(MONTHLY_PERSONAL_PREFIX.length),
+    };
   }
   if (key === RELATIONSHIP_KEY) {
-    return { period: 'day', rewardForIndex: dailyReward, penaltyRate: RELATIONSHIP_PENALTY_RATE };
+    return { period: 'day', rewardForIndex: dailyReward, penaltyRate: RELATIONSHIP_PENALTY_RATE, scope: 'shared' };
   }
-  return { period: 'day', rewardForIndex: dailyReward, penaltyRate: PENALTY_RATE };
+  if (key.startsWith(PERSONAL_PREFIX)) {
+    return {
+      period: 'day',
+      rewardForIndex: dailyReward,
+      penaltyRate: PENALTY_RATE,
+      scope: 'personal',
+      user: key.slice(PERSONAL_PREFIX.length),
+    };
+  }
+  return { period: 'day', rewardForIndex: dailyReward, penaltyRate: PENALTY_RATE, scope: 'shared' };
 }
 
 // Pure: given a stored list row and its config, decides whether the period

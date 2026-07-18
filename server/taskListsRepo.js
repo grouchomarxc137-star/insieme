@@ -32,10 +32,11 @@ function persist(key, state) {
 // it for the new period, before the caller (a read or a write) sees it.
 function withRolloverApplied(key, row) {
   if (!row) return row;
-  const { state: next, penaltyXp } = resolveRollover(row.state, configForListKey(key));
+  const config = configForListKey(key);
+  const { state: next, penaltyXp } = resolveRollover(row.state, config);
   if (next === row.state) return row;
   const updatedAt = persist(key, next);
-  if (penaltyXp > 0) penalize(penaltyXp);
+  if (penaltyXp > 0) penalize({ xp: penaltyXp, scope: config.scope, user: config.user });
   return { state: next, updatedAt };
 }
 

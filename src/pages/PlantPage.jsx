@@ -12,6 +12,7 @@ import {
   currentMultiplier,
   MULTIPLIER_FLOOR,
   MULTIPLIER_SPAN,
+  plantXp,
 } from '../lib/growth.js';
 import './PlantPage.css';
 
@@ -72,7 +73,8 @@ export default function PlantPage({ user }) {
   const growth = useGrowth();
   const multiplier = currentMultiplier(growth);
   const multiplierPct = Math.round(((multiplier - MULTIPLIER_FLOOR) / MULTIPLIER_SPAN) * 100);
-  const { level, isMax, xpIntoLevel, xpForNext } = levelProgress(growth.totalXp);
+  // The Plant grows from everyone's XP combined — personal or shared.
+  const { level, isMax, xpIntoLevel, xpForNext } = levelProgress(plantXp(growth));
   const currentStage = stageForLevel(level);
   const currentIndex = STAGES.findIndex((stage) => stage.id === currentStage.id);
   const nextStage = STAGES[currentIndex + 1];

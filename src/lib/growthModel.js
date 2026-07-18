@@ -74,9 +74,15 @@ export const QUICK_LOGS = [
 // 100, toxicity 0) rather than pre-loaded with either damage or credit.
 // A factory (not a constant) so lastUpdate is stamped when the state is
 // actually created, not when this module happened to load.
+// The two people this app is for — duplicated here (rather than imported)
+// because this module is shared with the client bundle, and the canonical
+// list (server/checkinRepo.js's PARTICIPANTS) isn't safe to import there.
+export const PARTICIPANTS = ['Principe', 'Principessa'];
+
 export function createDefaultState() {
   return {
     totalXp: 0,
+    personalXp: { Principe: 0, Principessa: 0 },
     water: 0,
     sun: 0,
     air: 100,
@@ -180,15 +186,27 @@ export function applyDecay(state, now = Date.now()) {
 
 // The single transformation every real award goes through — a task checked
 // off while locked in, a quick log completing, a monthly lock bonus. xp is
-// the nominal reward (what's shown on the task chip); the amount credited to
-// totalXp is scaled by the current multiplier. factorGain nudges the
-// matching meter (negative gains are valid, e.g. toxicity falling) and is
-// never scaled — only the XP conversion rate depends on the elements, not
-// the meters themselves. logId, if given, stamps a same-day cooldown (still
-// used by the monthly lock-in bonus).
-export function applyAward(state, { xp, factor, factorGain = 0, logId }) {
+// the nominal reward (what's shown on the task chip); the amount credited is
+// scaled by the current multiplier. factorGain nudges the matching meter
+// (negative gains are valid, e.g. toxicity falling) and is never scaled —
+// only the XP conversion rate depends on the elements, not the meters
+// themselves. logId, if given, stamps a same-day cooldown (still used by the
+// monthly lock-in bonus).
+//
+// scope decides which pot the XP lands in: 'shared' (relationship tasks,
+// monthly-shared, quick logs — the default) credits totalXp, the one pot
+// both of you see. 'personal' credits personalXp[user] instead — a task only
+// the person who did it gets credit for. The meters (water/sun/etc.) are
+// never split — the Plant stays one shared thing regardless of scope.
+export function applyAward(state, { xp, factor, factorGain = 0, logId, scope = 'shared', user }) {
   const multiplier = currentMultiplier(state);
-  const next = { ...state, totalXp: state.totalXp + Math.round(xp * multiplier) };
+  const creditedXp = Math.round(xp * multiplier);
+  const next = { ...state };
+  if (scope === 'personal' && user) {
+    next.personalXp = { ...state.personalXp, [user]: (state.personalXp?.[user] || 0) + creditedXp };
+  } else {
+    next.totalXp = state.totalXp + creditedXp;
+  }
   if (factor) {
     next[factor] = clampFactor(state[factor] + factorGain);
   }
@@ -202,9 +220,27 @@ export function applyAward(state, { xp, factor, factorGain = 0, logId }) {
 // nothing, so committing to more than you'll actually do has a real cost.
 // Flat, unscaled by the multiplier on purpose — the multiplier rewards a
 // healthy relationship state, it shouldn't also soften the deterrent for not
-// following through. Floors at 0 totalXp rather than going negative.
-export function applyPenaltyToState(state, xp) {
+// following through. Floors at 0 rather than going negative. Same scope
+// split as applyAward: a missed personal task only costs that person's own
+// pot, a missed shared task costs the shared pot.
+export function applyPenaltyToState(state, xp, { scope = 'shared', user } = {}) {
+  if (scope === 'personal' && user) {
+    const current = state.personalXp?.[user] || 0;
+    return { ...state, personalXp: { ...state.personalXp, [user]: Math.max(0, current - xp) } };
+  }
   return { ...state, totalXp: Math.max(0, state.totalXp - xp) };
+}
+
+// What the Plant's own level/stage grows from — everyone's XP combined,
+// personal or shared, since the Plant represents you both together.
+export function plantXp(state) {
+  return state.totalXp + PARTICIPANTS.reduce((sum, p) => sum + (state.personalXp?.[p] || 0), 0);
+}
+
+// What a given person's Character level grows from — their own personal-task
+// XP plus the full shared pot (shared XP counts for both of you, not split).
+export function characterXp(state, user) {
+  return state.totalXp + (state.personalXp?.[user] || 0);
 }
 
 // Committing to a monthly goal is worth a little XP on its own, before it's

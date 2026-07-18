@@ -267,6 +267,21 @@ function isValidXp(xp) {
   return Number.isFinite(xp) && xp >= 0 && xp <= 1000;
 }
 
+// scope defaults to 'shared' (the couple's one pot) when omitted, matching
+// every call site from before personal tasks got their own pot. 'personal'
+// requires a valid user so the credit/debit lands on the right person.
+function parseScope(body) {
+  const { scope, user } = body || {};
+  if (scope === undefined || scope === 'shared') return { ok: true, scope: 'shared' };
+  if (scope === 'personal') {
+    if (!PARTICIPANTS.includes(user)) {
+      return { ok: false, error: 'user must be Principe or Principessa for a personal award.' };
+    }
+    return { ok: true, scope: 'personal', user };
+  }
+  return { ok: false, error: `Unknown scope "${scope}".` };
+}
+
 app.get('/api/growth', (req, res) => {
   const { state, seeded } = growthRepo.getState();
   res.json(growthView(state, seeded));
@@ -282,10 +297,17 @@ app.post('/api/growth/award', (req, res) => {
     res.status(400).json({ error: `Unknown factor "${factor}".` });
     return;
   }
+  const parsedScope = parseScope(req.body);
+  if (!parsedScope.ok) {
+    res.status(400).json({ error: parsedScope.error });
+    return;
+  }
   const state = growthRepo.award({
     xp,
     factor,
     factorGain: Number.isFinite(factorGain) ? factorGain : 0,
+    scope: parsedScope.scope,
+    user: parsedScope.user,
   });
   res.json(growthView(state));
 });
@@ -300,10 +322,17 @@ app.post('/api/growth/unaward', (req, res) => {
     res.status(400).json({ error: `Unknown factor "${factor}".` });
     return;
   }
+  const parsedScope = parseScope(req.body);
+  if (!parsedScope.ok) {
+    res.status(400).json({ error: parsedScope.error });
+    return;
+  }
   const state = growthRepo.unaward({
     xp,
     factor,
     factorGain: Number.isFinite(factorGain) ? factorGain : 0,
+    scope: parsedScope.scope,
+    user: parsedScope.user,
   });
   res.json(growthView(state));
 });
@@ -318,7 +347,15 @@ app.post('/api/growth/monthly-lock', (req, res) => {
     res.status(400).json({ error: 'taskCount must be an integer between 1 and 10.' });
     return;
   }
-  const { state } = growthRepo.monthlyLockBonus(logId, taskCount);
+  const parsedScope = parseScope(req.body);
+  if (!parsedScope.ok) {
+    res.status(400).json({ error: parsedScope.error });
+    return;
+  }
+  const { state } = growthRepo.monthlyLockBonus(logId, taskCount, {
+    scope: parsedScope.scope,
+    user: parsedScope.user,
+  });
   res.json(growthView(state));
 });
 

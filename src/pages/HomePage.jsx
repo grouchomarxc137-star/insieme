@@ -9,6 +9,7 @@ import {
   levelProgress,
   stageForLevel,
   currentMultiplier,
+  plantXp,
   MAX_LEVEL,
 } from '../lib/growth.js';
 import { dailyReward, monthlyReward } from '../lib/tasksModel.js';
@@ -63,7 +64,9 @@ export default function HomePage({ user }) {
   const todayEarned = personal.earned + relationship.earned;
 
   const growth = useGrowth();
-  const { level } = levelProgress(growth.totalXp);
+  // The nido badge is the Plant's own level — everyone's XP combined,
+  // personal or shared, since the Plant represents you both together.
+  const { level } = levelProgress(plantXp(growth));
   const stage = stageForLevel(level);
   const multiplier = currentMultiplier(growth);
 
@@ -71,9 +74,11 @@ export default function HomePage({ user }) {
   // but only the first lock per list per calendar month counts, so
   // unlocking and relocking the same goals can't be used to farm it. The
   // once-per-month check lives on the server, against the shared state.
-  function handleLockMonthly(list, logId) {
+  // creditArgs is { scope: 'shared' } or { scope: 'personal', user } —
+  // shared for the couple's one goal, personal for each person's own.
+  function handleLockMonthly(list, logId, creditArgs) {
     if (list.tasks.length > 0) {
-      awardMonthlyLockBonus(logId, list.tasks.length).catch(() => {});
+      awardMonthlyLockBonus(logId, list.tasks.length, creditArgs).catch(() => {});
     }
     list.lock();
   }
@@ -112,7 +117,14 @@ export default function HomePage({ user }) {
               pendingMessage={`${otherName} is still setting up today's tasks.`}
             />
           ) : (
-            <TaskListBody list={personal} factor="water" addPlaceholder="Add a personal task" periodNoun="day" />
+            <TaskListBody
+              list={personal}
+              factor="water"
+              addPlaceholder="Add a personal task"
+              periodNoun="day"
+              scope="personal"
+              user={user}
+            />
           )}
         </div>
 
@@ -127,6 +139,7 @@ export default function HomePage({ user }) {
             addPlaceholder="Add a relationship task"
             maxTasks={MAX_TASKS}
             periodNoun="day"
+            scope="shared"
           />
         </div>
       </div>
@@ -145,8 +158,9 @@ export default function HomePage({ user }) {
             addPlaceholder="Add your shared goal"
             newTaskDefaults={NEW_TASK_DUE.monthlyShared}
             maxTasks={MAX_MONTHLY_SHARED}
-            onLock={() => handleLockMonthly(monthlyShared, 'monthly-lock-shared')}
+            onLock={() => handleLockMonthly(monthlyShared, 'monthly-lock-shared', { scope: 'shared' })}
             periodNoun="month"
+            scope="shared"
           />
         </div>
 
@@ -174,8 +188,12 @@ export default function HomePage({ user }) {
               addPlaceholder="Add a personal goal"
               newTaskDefaults={NEW_TASK_DUE.monthlyPersonal}
               maxTasks={MAX_MONTHLY_PERSONAL}
-              onLock={() => handleLockMonthly(monthlyPersonal, `monthly-lock-personal-${user}`)}
+              onLock={() =>
+                handleLockMonthly(monthlyPersonal, `monthly-lock-personal-${user}`, { scope: 'personal', user })
+              }
               periodNoun="month"
+              scope="personal"
+              user={user}
             />
           )}
         </div>
@@ -184,20 +202,32 @@ export default function HomePage({ user }) {
   );
 }
 
-function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, maxTasks = MAX_TASKS, onLock, periodNoun = 'day' }) {
+function TaskListBody({
+  list,
+  factor,
+  showDue,
+  addPlaceholder,
+  newTaskDefaults,
+  maxTasks = MAX_TASKS,
+  onLock,
+  periodNoun = 'day',
+  scope = 'shared',
+  user,
+}) {
   const atCap = list.tasks.length >= maxTasks;
   const missedCount = list.tasks.filter((task) => task.missed).length;
 
   function handleToggle(task, index) {
     // Awards on the not-done -> done transition and reverses the same
     // xp/factorGain on the done -> not-done transition, so toggling back and
-    // forth can't be used to farm Plant growth.
+    // forth can't be used to farm Plant growth. scope/user route the credit
+    // to the shared pot or this task's owner's own pot (see growthModel.js).
     const factorGain = FACTOR_GAIN[factor] || 0;
     const xp = list.rewardForIndex(index);
     if (!task.done) {
-      awardGrowth({ xp, factor, factorGain }).catch(() => {});
+      awardGrowth({ xp, factor, factorGain, scope, user }).catch(() => {});
     } else {
-      unawardGrowth({ xp, factor, factorGain }).catch(() => {});
+      unawardGrowth({ xp, factor, factorGain, scope, user }).catch(() => {});
     }
     list.toggleTask(task.id);
   }
