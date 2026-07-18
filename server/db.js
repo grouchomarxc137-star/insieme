@@ -114,6 +114,25 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by);
 `);
 
+// Task lists + the shared growth/XP state — moved out of per-device
+// localStorage so both people see the same tasks, tree, and character from
+// any device. Stored as JSON blobs in the same shape the client used in
+// localStorage (the app only ever reads/writes whole lists, so there's
+// nothing to gain from normalizing them into rows).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS task_lists (
+    key TEXT PRIMARY KEY,
+    state TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS growth_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    state TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
+
 // Added when the workflow grew a "creator validates the reply" step between
 // reply and close — existing DBs won't have this column yet.
 const ticketColumns = db.prepare(`PRAGMA table_info(tickets)`).all().map((c) => c.name);

@@ -7,7 +7,6 @@ import {
   STAGES,
   MAX_LEVEL,
   QUICK_LOGS,
-  getQuickLogConfirmations,
   confirmQuickLog,
   removeQuickLogConfirmation,
   currentMultiplier,
@@ -82,14 +81,15 @@ export default function PlantPage({ user }) {
   const [openFactorId, setOpenFactorId] = useState(null);
   const openFactor = FACTORS.find((factor) => factor.id === openFactorId) || null;
 
+  // Confirmations live in the server's shared growth state now, so each
+  // person taps on their own device and the XP still lands once both have.
+  // The responses broadcast the fresh state to useGrowth on their own.
   function handleQuickLog(entry) {
-    confirmQuickLog(user, entry);
-    growth.refresh();
+    confirmQuickLog(user, entry.id).catch(() => {});
   }
 
   function handleRemoveConfirmation(entryId, side) {
-    removeQuickLogConfirmation(entryId, side);
-    growth.refresh();
+    removeQuickLogConfirmation(entryId, side).catch(() => {});
   }
 
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function PlantPage({ user }) {
         </p>
         <div className="factor-list">
           {QUICK_LOGS.map((entry) => {
-            const confirmations = getQuickLogConfirmations(entry.id);
+            const confirmations = growth.quickLogPending?.[entry.id] || {};
             const youConfirmed = Boolean(confirmations[user]);
             const otherConfirmed = Boolean(confirmations[otherName]);
             let status = `+${entry.xp} XP`;

@@ -464,3 +464,25 @@
   content: '♥ ';
 }
 
+.missed-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a3542f;
+  background: #fdeee3;
+  border: 1px solid #f0c9a8;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.missed-badge {
+  font-size: 11px;
+  font-weight: 800;
+  background: #fdeee3;
+  border: 1.5px solid #a3542f;
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: #a3542f;
+  white-space: nowrap;
+}
+

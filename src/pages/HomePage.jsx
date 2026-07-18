@@ -3,15 +3,14 @@ import { useTaskList } from '../hooks/useTaskList.js';
 import { usePeekTasks } from '../hooks/usePeekTasks.js';
 import {
   awardGrowth,
-  getGrowthState,
-  canAwardMonthlyLock,
-  MONTHLY_LOCK_BONUS_XP,
+  awardMonthlyLockBonus,
   useGrowth,
   levelProgress,
   stageForLevel,
   currentMultiplier,
   MAX_LEVEL,
 } from '../lib/growth.js';
+import { dailyReward, monthlyReward } from '../lib/tasksModel.js';
 import NidoScene from '../components/NidoScene.jsx';
 import './HomePage.css';
 
@@ -29,31 +28,6 @@ const DEFAULT_RELATIONSHIP = [];
 const DEFAULT_MONTHLY_SHARED = [];
 const DEFAULT_MONTHLY_PERSONAL = [];
 
-// Reward escalates by position — the deeper into a list you lock in, the
-// more each task is worth, so filling the list out is a bigger commitment
-// with a bigger payoff. Monthly goals use a steeper step since they're the
-// bigger, rarer efforts (see growth.js's Bees comment). Only a task's name
-// is player-editable — the reward is always position-driven, never chosen.
-const DAILY_REWARD_BASE = 10;
-const DAILY_REWARD_STEP = 5;
-const MONTHLY_REWARD_BASE = 25;
-const MONTHLY_REWARD_STEP = 15;
-
-function dailyReward(index) {
-  return DAILY_REWARD_BASE + DAILY_REWARD_STEP * index;
-}
-
-function monthlyReward(index) {
-  return MONTHLY_REWARD_BASE + MONTHLY_REWARD_STEP * index;
-}
-
-// Locking in a task and not finishing it costs you XP instead of earning
-// nothing — a real deterrent against over-committing. Relationship tasks
-// depend on someone else showing up too, not just you, so their penalty is
-// only half as harsh as everywhere else.
-const PENALTY_RATE = 1;
-const RELATIONSHIP_PENALTY_RATE = 0.5;
-
 const NEW_TASK_DUE = { monthlyShared: 'This month', monthlyPersonal: 'This month' };
 
 const MAX_TASKS = 3;
@@ -63,24 +37,20 @@ const MAX_MONTHLY_PERSONAL = 2;
 export default function HomePage({ user }) {
   const otherName = user === 'Principe' ? 'Principessa' : 'Principe';
 
-  // Renaming these keys resets everyone to a clean slate (empty lists, no
-  // locked-in progress) on next load, since there's no server-side task data
-  // to reset instead. Last changed for the Insieme → Lovissimi rename.
+  // These keys are now rows in the server's task_lists table (they kept the
+  // old localStorage names so the one-time migration could match them up).
+  // Renaming one starts that list from a clean slate on next load.
   const personal = useTaskList(`lovissimi-personal-${user}`, DEFAULT_PERSONAL, {
     rewardForIndex: dailyReward,
-    penaltyRate: PENALTY_RATE,
   });
   const relationship = useTaskList('lovissimi-relationship-tasks', DEFAULT_RELATIONSHIP, {
     rewardForIndex: dailyReward,
-    penaltyRate: RELATIONSHIP_PENALTY_RATE,
   });
   const monthlyShared = useTaskList('lovissimi-monthly-shared', DEFAULT_MONTHLY_SHARED, {
     rewardForIndex: monthlyReward,
-    penaltyRate: PENALTY_RATE,
   });
   const monthlyPersonal = useTaskList(`lovissimi-monthly-personal-${user}`, DEFAULT_MONTHLY_PERSONAL, {
     rewardForIndex: monthlyReward,
-    penaltyRate: PENALTY_RATE,
   });
 
   const [peekingPersonal, setPeekingPersonal] = useState(false);
@@ -98,18 +68,11 @@ export default function HomePage({ user }) {
 
   // Locking in a goal is worth a little XP on its own, before it's done —
   // but only the first lock per list per calendar month counts, so
-  // unlocking and relocking the same goals can't be used to farm it.
+  // unlocking and relocking the same goals can't be used to farm it. The
+  // once-per-month check lives on the server, against the shared state.
   function handleLockMonthly(list, logId) {
     if (list.tasks.length > 0) {
-      const state = getGrowthState();
-      if (canAwardMonthlyLock(state, logId)) {
-        awardGrowth({
-          xp: MONTHLY_LOCK_BONUS_XP * list.tasks.length,
-          factor: 'bees',
-          factorGain: 4,
-          logId,
-        });
-      }
+      awardMonthlyLockBonus(logId, list.tasks.length).catch(() => {});
     }
     list.lock();
   }
@@ -148,7 +111,7 @@ export default function HomePage({ user }) {
               pendingMessage={`${otherName} is still setting up today's tasks.`}
             />
           ) : (
-            <TaskListBody list={personal} factor="water" addPlaceholder="Add a personal task" />
+            <TaskListBody list={personal} factor="water" addPlaceholder="Add a personal task" periodNoun="day" />
           )}
         </div>
 
@@ -162,6 +125,7 @@ export default function HomePage({ user }) {
             factor="sun"
             addPlaceholder="Add a relationship task"
             maxTasks={MAX_TASKS}
+            periodNoun="day"
           />
         </div>
       </div>
@@ -181,6 +145,7 @@ export default function HomePage({ user }) {
             newTaskDefaults={NEW_TASK_DUE.monthlyShared}
             maxTasks={MAX_MONTHLY_SHARED}
             onLock={() => handleLockMonthly(monthlyShared, 'monthly-lock-shared')}
+            periodNoun="month"
           />
         </div>
 
@@ -209,6 +174,7 @@ export default function HomePage({ user }) {
               newTaskDefaults={NEW_TASK_DUE.monthlyPersonal}
               maxTasks={MAX_MONTHLY_PERSONAL}
               onLock={() => handleLockMonthly(monthlyPersonal, `monthly-lock-personal-${user}`)}
+              periodNoun="month"
             />
           )}
         </div>
@@ -217,14 +183,15 @@ export default function HomePage({ user }) {
   );
 }
 
-function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, maxTasks = MAX_TASKS, onLock }) {
+function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, maxTasks = MAX_TASKS, onLock, periodNoun = 'day' }) {
   const atCap = list.tasks.length >= maxTasks;
+  const missedCount = list.tasks.filter((task) => task.missed).length;
 
   function handleToggle(task, index) {
     // Only awards on the not-done -> done transition, and never reverses on
     // uncheck, so toggling back and forth can't be used to farm Plant growth.
     if (!task.done) {
-      awardGrowth({ xp: list.rewardForIndex(index), factor, factorGain: FACTOR_GAIN[factor] || 0 });
+      awardGrowth({ xp: list.rewardForIndex(index), factor, factorGain: FACTOR_GAIN[factor] || 0 }).catch(() => {});
     }
     list.toggleTask(task.id);
   }
@@ -241,6 +208,13 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
           <span className="lock-badge">🔓 Editing — lock in to start earning</span>
         )}
       </div>
+
+      {missedCount > 0 && (
+        <p className="missed-note">
+          ⚠️ {missedCount} {missedCount === 1 ? 'task was' : 'tasks were'} still unfinished when the {periodNoun}{' '}
+          ended — that cost XP. Edit and lock in again when you're ready.
+        </p>
+      )}
 
       <ul className="task-list">
         {list.tasks.map((task, index) =>
@@ -282,9 +256,15 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
 
       <div className="lock-row">
         {list.locked ? (
-          <button type="button" className="unlock-btn" onClick={list.unlock}>
-            🔓 Unlock to edit (resets progress, penalizes anything unfinished)
-          </button>
+          <>
+            <button type="button" className="unlock-btn" onClick={list.unlock}>
+              🔓 Unlock to edit
+            </button>
+            <p className="task-cap-note">
+              Free to revise any time. XP is only lost if this is still locked with unfinished tasks when the{' '}
+              {periodNoun} ends.
+            </p>
+          </>
         ) : (
           <button
             type="button"
@@ -320,6 +300,7 @@ function EditableTaskRow({ task, reward, showDue, onChange, onRemove }) {
         />
       )}
       <div className="task-edit-rewards">
+        {task.missed && <span className="missed-badge">⚠️ Missed</span>}
         <span className="reward-tag">+{reward} XP</span>
         <button type="button" className="task-remove-btn" onClick={onRemove} aria-label={`Remove "${task.label}"`}>
           ✕
@@ -347,6 +328,7 @@ function TaskRow({ task, reward, onToggle, showDue, readOnly }) {
         {showDue && task.due && <span className="task-due">{task.due}</span>}
       </div>
       <div className="task-rewards">
+        {task.missed && <span className="missed-badge">⚠️ Missed</span>}
         <span className="reward-tag">+{reward} XP</span>
       </div>
     </li>

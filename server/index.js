@@ -15,6 +15,9 @@ import { startDiscordBot } from './resetRoomDiscordBot.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES } from '../src/lib/tickets.js';
+import * as taskListsRepo from './taskListsRepo.js';
+import * as growthRepo from './growthRepo.js';
+import { FACTOR_CONFIG } from '../src/lib/growthModel.js';
 
 const CHECKIN_TYPES = ['daily', 'weekly'];
 
@@ -215,6 +218,115 @@ app.delete('/api/tickets/:id', (req, res) => {
   ticketsRepo.deleteTicket(req.params.id);
   notifyTicketEvent(ticket, 'delete_ticket').catch(reportTicketNotifyFailure('delete_ticket'));
   res.json({ ok: true });
+});
+
+// Task lists — server-backed so both people see the same lists (and can
+// peek at each other's) from any device. `exists: false` with a default
+// state tells the client this list has never been saved, which is what
+// triggers its one-time localStorage import.
+app.get('/api/task-lists/:key', (req, res) => {
+  const { key } = req.params;
+  if (!taskListsRepo.isValidKey(key)) {
+    res.status(400).json({ error: 'Invalid list key.' });
+    return;
+  }
+  const { exists, state, updatedAt } = taskListsRepo.getList(key);
+  res.json({ exists, state: exists ? state : { tasks: [], locked: false }, updatedAt });
+});
+
+app.put('/api/task-lists/:key', (req, res) => {
+  const { key } = req.params;
+  if (!taskListsRepo.isValidKey(key)) {
+    res.status(400).json({ error: 'Invalid list key.' });
+    return;
+  }
+  const result = taskListsRepo.saveList(key, req.body || {});
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+// Growth — the shared XP/meter state behind the Plant and Character pages.
+// All awards land here so both people grow the same tree regardless of whose
+// device did the tapping. Every response is the full flattened state (plus
+// `seeded`), matching what useGrowth expects.
+
+function growthView(state, seeded = true) {
+  return { ...state, seeded };
+}
+
+function isValidXp(xp) {
+  return Number.isFinite(xp) && xp >= 0 && xp <= 1000;
+}
+
+app.get('/api/growth', (req, res) => {
+  const { state, seeded } = growthRepo.getState();
+  res.json(growthView(state, seeded));
+});
+
+app.post('/api/growth/award', (req, res) => {
+  const { xp, factor, factorGain } = req.body || {};
+  if (!isValidXp(xp)) {
+    res.status(400).json({ error: 'xp must be a number between 0 and 1000.' });
+    return;
+  }
+  if (factor !== undefined && !(factor in FACTOR_CONFIG)) {
+    res.status(400).json({ error: `Unknown factor "${factor}".` });
+    return;
+  }
+  const state = growthRepo.award({
+    xp,
+    factor,
+    factorGain: Number.isFinite(factorGain) ? factorGain : 0,
+  });
+  res.json(growthView(state));
+});
+
+app.post('/api/growth/monthly-lock', (req, res) => {
+  const { logId, taskCount } = req.body || {};
+  if (typeof logId !== 'string' || !/^[\w-]{1,60}$/.test(logId)) {
+    res.status(400).json({ error: 'logId is required.' });
+    return;
+  }
+  if (!Number.isInteger(taskCount) || taskCount < 1 || taskCount > 10) {
+    res.status(400).json({ error: 'taskCount must be an integer between 1 and 10.' });
+    return;
+  }
+  const { state } = growthRepo.monthlyLockBonus(logId, taskCount);
+  res.json(growthView(state));
+});
+
+app.post('/api/growth/quicklog/confirm', (req, res) => {
+  const { user, logId } = req.body || {};
+  const result = growthRepo.confirmQuickLog(user, logId);
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(growthView(result.state));
+});
+
+app.post('/api/growth/quicklog/remove', (req, res) => {
+  const { logId, side } = req.body || {};
+  if (typeof logId !== 'string' || typeof side !== 'string') {
+    res.status(400).json({ error: 'logId and side are required.' });
+    return;
+  }
+  res.json(growthView(growthRepo.removeQuickLogConfirmation(logId, side)));
+});
+
+// One-time migration of a device's localStorage growth state — only accepted
+// while the server has never stored any growth state of its own.
+app.post('/api/growth/import', (req, res) => {
+  const { state } = req.body || {};
+  if (!state || typeof state !== 'object') {
+    res.status(400).json({ error: 'state is required.' });
+    return;
+  }
+  const result = growthRepo.importState(state);
+  res.status(result.imported ? 201 : 200).json(growthView(result.state));
 });
 
 // Local (server-timezone) Y-M-D key — kept in local time throughout, same as
