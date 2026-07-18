@@ -106,6 +106,13 @@ export function awardGrowth({ xp, factor, factorGain = 0 }) {
   return postGrowth('/api/growth/award', { xp, factor, factorGain });
 }
 
+// Mirrors awardGrowth for a task getting unchecked — same xp/factor/factorGain
+// it was checked off with, so the credit gets undone instead of just letting
+// a re-check re-award on top of it.
+export function unawardGrowth({ xp, factor, factorGain = 0 }) {
+  return postGrowth('/api/growth/unaward', { xp, factor, factorGain });
+}
+
 // The server enforces the once-per-list-per-calendar-month rule, so calling
 // this on every lock is safe — it just won't award twice in a month.
 export function awardMonthlyLockBonus(logId, taskCount) {

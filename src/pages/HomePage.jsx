@@ -3,6 +3,7 @@ import { useTaskList } from '../hooks/useTaskList.js';
 import { usePeekTasks } from '../hooks/usePeekTasks.js';
 import {
   awardGrowth,
+  unawardGrowth,
   awardMonthlyLockBonus,
   useGrowth,
   levelProgress,
@@ -188,10 +189,15 @@ function TaskListBody({ list, factor, showDue, addPlaceholder, newTaskDefaults, 
   const missedCount = list.tasks.filter((task) => task.missed).length;
 
   function handleToggle(task, index) {
-    // Only awards on the not-done -> done transition, and never reverses on
-    // uncheck, so toggling back and forth can't be used to farm Plant growth.
+    // Awards on the not-done -> done transition and reverses the same
+    // xp/factorGain on the done -> not-done transition, so toggling back and
+    // forth can't be used to farm Plant growth.
+    const factorGain = FACTOR_GAIN[factor] || 0;
+    const xp = list.rewardForIndex(index);
     if (!task.done) {
-      awardGrowth({ xp: list.rewardForIndex(index), factor, factorGain: FACTOR_GAIN[factor] || 0 }).catch(() => {});
+      awardGrowth({ xp, factor, factorGain }).catch(() => {});
+    } else {
+      unawardGrowth({ xp, factor, factorGain }).catch(() => {});
     }
     list.toggleTask(task.id);
   }

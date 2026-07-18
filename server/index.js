@@ -284,6 +284,24 @@ app.post('/api/growth/award', (req, res) => {
   res.json(growthView(state));
 });
 
+app.post('/api/growth/unaward', (req, res) => {
+  const { xp, factor, factorGain } = req.body || {};
+  if (!isValidXp(xp)) {
+    res.status(400).json({ error: 'xp must be a number between 0 and 1000.' });
+    return;
+  }
+  if (factor !== undefined && !(factor in FACTOR_CONFIG)) {
+    res.status(400).json({ error: `Unknown factor "${factor}".` });
+    return;
+  }
+  const state = growthRepo.unaward({
+    xp,
+    factor,
+    factorGain: Number.isFinite(factorGain) ? factorGain : 0,
+  });
+  res.json(growthView(state));
+});
+
 app.post('/api/growth/monthly-lock', (req, res) => {
   const { logId, taskCount } = req.body || {};
   if (typeof logId !== 'string' || !/^[\w-]{1,60}$/.test(logId)) {

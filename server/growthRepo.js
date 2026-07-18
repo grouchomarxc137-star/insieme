@@ -66,6 +66,18 @@ export function penalize(xp) {
   return save(applyPenaltyToState(state, xp));
 }
 
+// Undoes an award for a task that got unchecked — same xp/factor/factorGain
+// the check-off used, just negated through applyAward so the factor lands
+// back exactly where it started. totalXp won't always net to exactly zero
+// over a check+uncheck (this factor's own gain nudges the multiplier the
+// second call reads), but a full cycle always starts and ends at the same
+// factor value, so repeated toggling can't be used to farm XP.
+export function unaward({ xp, factor, factorGain = 0 }) {
+  const { state } = getState();
+  const next = applyAward(state, { xp: -xp, factor, factorGain: -factorGain });
+  return save({ ...next, totalXp: Math.max(0, next.totalXp) });
+}
+
 // The lock-in bonus for monthly goals — the once-per-list-per-calendar-month
 // rule is enforced here, on the shared state, so relocking from a second
 // device can't double-award it.
