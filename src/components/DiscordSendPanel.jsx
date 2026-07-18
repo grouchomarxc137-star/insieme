@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './DiscordSendPanel.css';
 
-export default function DiscordSendPanel({ title, subtitle, options, sendLabel = 'Send to Discord', user, messageLabel }) {
+export default function DiscordSendPanel({ title, subtitle, options, sendLabel = 'Send to Discord', user, messageLabel, updateNickname = false }) {
   const [selected, setSelected] = useState(null);
   const [lastSent, setLastSent] = useState(null);
   const [sending, setSending] = useState(false);
@@ -18,10 +18,17 @@ export default function DiscordSendPanel({ title, subtitle, options, sendLabel =
       // Same key every time this person sends this type of update, so the
       // server can delete their previous one and only the latest shows.
       const key = messageLabel ? `${user}-${messageLabel}` : undefined;
+      // Only this panel's own emoji goes along, and only when it's opted
+      // into nickname sync — Emergency Mood posts a message but never
+      // touches your server nickname.
+      const body =
+        updateNickname && selectedOption.emoji
+          ? { content, key, user, emoji: selectedOption.emoji }
+          : { content, key };
       const response = await fetch('/api/discord-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, key }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error('Discord relay rejected the message');
       setLastSent(selectedOption.label);

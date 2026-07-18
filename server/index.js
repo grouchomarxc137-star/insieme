@@ -11,7 +11,7 @@ import { buildCheckinPdf } from './checkinPdf.js';
 import * as resetRoomRepo from './resetRoomRepo.js';
 import { decorateState } from './resetRoomStateMachine.js';
 import { registerSocketHandlers } from './resetRoomSocket.js';
-import { startDiscordBot } from './resetRoomDiscordBot.js';
+import { startDiscordBot, setStatusNickname } from './resetRoomDiscordBot.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES } from '../src/lib/tickets.js';
@@ -43,7 +43,7 @@ app.post('/api/discord-message', async (req, res) => {
     return;
   }
 
-  const { content, key } = req.body || {};
+  const { content, key, user, emoji } = req.body || {};
   if (!content || typeof content !== 'string') {
     res.status(400).json({ error: 'content is required.' });
     return;
@@ -77,6 +77,12 @@ app.post('/api/discord-message', async (req, res) => {
       const message = await discordResponse.json();
       lastMessageIds.set(key, message.id);
       console.log(`[discord] posted ${message.id} for key "${key}"`);
+    }
+
+    // Status updates (not Emergency Mood) also carry `emoji`, which is the
+    // signal to sync it onto the sender's server nickname.
+    if (user && emoji) {
+      await setStatusNickname(user, emoji);
     }
 
     res.status(204).end();

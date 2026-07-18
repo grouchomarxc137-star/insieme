@@ -6,21 +6,25 @@ import './CharacterPage.css';
 const STATUS_OPTIONS = [
   {
     id: 'locked-in',
+    emoji: '🔒',
     label: '🔒 Locked in',
     description: "Don't expect a response or engagement — even if I do reply, it's not expected.",
   },
   {
     id: 'multitasking',
+    emoji: '🌀',
     label: '🌀 Multitasking',
     description: "Busy, but can text in between. Don't expect full engagement.",
   },
   {
     id: 'free',
+    emoji: '💬',
     label: '💬 Free to text',
     description: "We text and engage, but I might get distracted or step away once in a while.",
   },
   {
     id: 'divine-attention',
+    emoji: '✨',
     label: '✨ Divine attention',
     description: "All yours — no dividing attention with anything else.",
   },
@@ -100,6 +104,7 @@ export default function CharacterPage({ user }) {
         options={STATUS_OPTIONS}
         user={user}
         messageLabel="status"
+        updateNickname
       />
 
       <DiscordSendPanel

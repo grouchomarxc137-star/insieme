@@ -33,6 +33,16 @@ const LOCKDOWN_WARNING =
 // configurable, so a bad confirm click can't wipe it.
 const CLEARCHANNEL_PROTECTED_ID = '1448283314635935897';
 
+// Maps the app's own user labels to real Discord accounts — nothing else in
+// this app needs to know either of your actual Discord user IDs, only the
+// nickname sync does. Principe is hardcoded for now (rather than an env var)
+// at the user's request; Principessa's isn't set yet, so her nickname sync
+// silently no-ops until DISCORD_PRINCIPESSA_USER_ID is configured.
+const STATUS_USER_IDS = {
+  Principe: '1497122888090783904',
+  Principessa: process.env.DISCORD_PRINCIPESSA_USER_ID,
+};
+
 let client = null;
 let lockState = null; // { sessionId } | null
 
@@ -114,7 +124,9 @@ export function startDiscordBot() {
     return;
   }
 
-  client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+  client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMembers],
+  });
 
   client.once('clientReady', async () => {
     console.log(`[discord] bot logged in as ${client.user.tag}`);
@@ -257,4 +269,24 @@ export function unlockAfterSession(sessionId) {
   if (!lockState || lockState.sessionId !== sessionId) return;
   lockState = null;
   console.log(`[discord] session ${sessionId} finished, reset protocol ended`);
+}
+
+// Renames whichever of you picked a new status to "<name> <emoji>" — e.g.
+// "Principe 🔒". Swallows every failure (bot not logged in, IDs not
+// configured, bot's role sitting below yours, or you being the server owner
+// which Discord blocks unconditionally) so a status post never fails just
+// because the nickname half of it couldn't go through.
+export async function setStatusNickname(user, emoji) {
+  if (!client || !client.isReady()) return;
+  const guildId = process.env.DISCORD_GUILD_ID;
+  const userId = STATUS_USER_IDS[user];
+  if (!guildId || !userId) return;
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const member = await guild.members.fetch(userId);
+    await member.setNickname(`${user} ${emoji}`);
+  } catch (err) {
+    console.error(`[discord] failed to set nickname for ${user}:`, err.message);
+  }
 }
