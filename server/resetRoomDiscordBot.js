@@ -277,15 +277,22 @@ export function unlockAfterSession(sessionId) {
 // which Discord blocks unconditionally) so a status post never fails just
 // because the nickname half of it couldn't go through.
 export async function setStatusNickname(user, emoji) {
-  if (!client || !client.isReady()) return;
+  if (!client || !client.isReady()) {
+    console.log(`[discord] skipping nickname sync for ${user}: bot not ready`);
+    return;
+  }
   const guildId = process.env.DISCORD_GUILD_ID;
   const userId = STATUS_USER_IDS[user];
-  if (!guildId || !userId) return;
+  if (!guildId || !userId) {
+    console.log(`[discord] skipping nickname sync for ${user}: guildId or userId not configured`);
+    return;
+  }
 
   try {
     const guild = await client.guilds.fetch(guildId);
     const member = await guild.members.fetch(userId);
     await member.setNickname(`${user} ${emoji}`);
+    console.log(`[discord] nickname synced for ${user}: now "${member.nickname}"`);
   } catch (err) {
     console.error(`[discord] failed to set nickname for ${user}:`, err.message);
   }
