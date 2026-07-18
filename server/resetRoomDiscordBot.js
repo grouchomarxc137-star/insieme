@@ -35,12 +35,11 @@ const CLEARCHANNEL_PROTECTED_ID = '1448283314635935897';
 
 // Maps the app's own user labels to real Discord accounts — nothing else in
 // this app needs to know either of your actual Discord user IDs, only the
-// nickname sync does. Principe is hardcoded for now (rather than an env var)
-// at the user's request; Principessa's isn't set yet, so her nickname sync
-// silently no-ops until DISCORD_PRINCIPESSA_USER_ID is configured.
+// nickname sync does. Hardcoded for now (rather than env vars) at the user's
+// request.
 const STATUS_USER_IDS = {
   Principe: '1497122888090783904',
-  Principessa: process.env.DISCORD_PRINCIPESSA_USER_ID,
+  Principessa: '539848335104802820',
 };
 
 let client = null;
