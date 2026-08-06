@@ -27,6 +27,14 @@ export const DAILY_QUESTIONS = [
     required: true,
   },
   {
+    type: 'scale',
+    id: 'relationship_rating',
+    label: 'What rating would you give our relationship today?',
+    hint: '1 awful · 2 bad · 3 normal · 4 good · 5 amazing',
+    options: ['1', '2', '3', '4', '5'],
+    required: true,
+  },
+  {
     type: 'textarea',
     id: 'free_expression',
     label: "Is there anything you'd like to share with your partner — good or bad? Trust each other, and don't hold it in.",
@@ -79,6 +87,27 @@ export const WEEKLY_QUESTIONS = [
   { type: 'scale', id: 'feel_now', label: 'How do I feel now?', options: ['1', '2', '3', '4', '5'], required: true },
   { type: 'textarea', id: 'notes', label: 'Notes', required: false },
 ];
+
+// The daily overall rating drives the relationship heatmap. Colors live here
+// rather than in CSS so the web grid, its legend, and the monthly PDF all read
+// from one place and can't drift apart.
+export const RATING_QUESTION_ID = 'relationship_rating';
+
+export const RATING_COLORS = {
+  1: '#8fc6dc',
+  2: '#cfe9ee',
+  3: '#f2dfa8',
+  4: '#f2b02e',
+  5: '#e8804a',
+};
+
+export const RATING_LABELS = {
+  1: 'Awful',
+  2: 'Bad',
+  3: 'Normal',
+  4: 'Good',
+  5: 'Amazing',
+};
 
 export function questionsForType(type) {
   return type === 'weekly' ? WEEKLY_QUESTIONS : DAILY_QUESTIONS;

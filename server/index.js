@@ -5,9 +5,23 @@ import { createServer } from 'node:http';
 import express from 'express';
 import { Server } from 'socket.io';
 import { MILESTONES, getNextMonthlyAnniversary, formatDate } from '../src/lib/moments.js';
-import { typeLabel } from '../src/lib/checkin.js';
-import { getCurrentCheckin, submitAnswers, toPublicView, PARTICIPANTS } from './checkinRepo.js';
+import { typeLabel, getPeriodInfo } from '../src/lib/checkin.js';
+import { monthKeyOf, monthLabel, shiftMonth } from '../src/lib/heatmap.js';
+import {
+  getCurrentCheckin,
+  submitAnswers,
+  toPublicView,
+  PARTICIPANTS,
+  getMonthlyRatings,
+  setDayRating,
+  clearDayRating,
+  isValidRating,
+  hasCheckinRating,
+  wasReportSent,
+  markReportSent,
+} from './checkinRepo.js';
 import { buildCheckinPdf } from './checkinPdf.js';
+import { buildMonthlyHeatmapPdf } from './monthlyHeatmapPdf.js';
 import * as resetRoomRepo from './resetRoomRepo.js';
 import { decorateState } from './resetRoomStateMachine.js';
 import { registerSocketHandlers } from './resetRoomSocket.js';
@@ -110,6 +124,76 @@ async function sendCheckinPdfToDiscord(pdfBuffer, filename, content) {
     throw new Error(`Discord rejected the check-in PDF: ${response.status} ${detail}`);
   }
 }
+
+// One month of the relationship heatmap. Registered before /api/checkins/:type
+// so the two stay readable together — :type wouldn't match these longer paths
+// anyway.
+app.get('/api/checkins/daily/heatmap/:month', (req, res) => {
+  const { month } = req.params;
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    res.status(400).json({ error: 'month must look like YYYY-MM.' });
+    return;
+  }
+  res.json({ month, label: monthLabel(month), days: getMonthlyRatings(month) });
+});
+
+// Validates a hand-entered rating for a past day. The UI already hides the
+// editor for ineligible days; this re-checks everything anyway, since the
+// route is reachable directly.
+function validateDayRatingRequest(dateParam, participant) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    return 'date must look like YYYY-MM-DD.';
+  }
+  const [year, month, day] = dateParam.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day) {
+    return `"${dateParam}" is not a real date.`;
+  }
+  if (!PARTICIPANTS.includes(participant)) {
+    return 'participant must be Principe or Principessa.';
+  }
+  // Today and later belong to the check-in flow — this is a backfill tool for
+  // days that already got away.
+  if (dateParam >= getPeriodInfo('daily').key) {
+    return 'Only days before today can be filled in by hand.';
+  }
+  if (hasCheckinRating(dateParam, participant)) {
+    return 'You already rated that day in its check-in, so it is locked.';
+  }
+  return null;
+}
+
+app.put('/api/checkins/daily/rating/:date', (req, res) => {
+  const { date } = req.params;
+  const { participant, rating } = req.body || {};
+
+  const error = validateDayRatingRequest(date, participant);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+  if (!isValidRating(rating)) {
+    res.status(400).json({ error: 'rating must be a whole number from 1 to 5.' });
+    return;
+  }
+
+  setDayRating(date, participant, rating);
+  res.status(200).json({ date, participant, rating });
+});
+
+app.delete('/api/checkins/daily/rating/:date', (req, res) => {
+  const { date } = req.params;
+  const { participant } = req.body || {};
+
+  const error = validateDayRatingRequest(date, participant);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+
+  clearDayRating(date, participant);
+  res.status(204).end();
+});
 
 app.get('/api/checkins/:type', (req, res) => {
   const { type } = req.params;
@@ -442,6 +526,53 @@ async function checkAnniversaryReminders() {
 // hourly — no cron dependency needed for once-a-day-ish precision.
 checkAnniversaryReminders();
 setInterval(checkAnniversaryReminders, 60 * 60 * 1000);
+
+// How long into the new month to wait before reporting the previous one. At 1
+// the report goes out in the first hour of the 1st, so days backfilled after
+// that won't be in the PDF that was already posted — bump this to give
+// yourselves a grace period to fill in forgotten days first.
+const REPORT_ON_DAY_OF_MONTH = 1;
+
+// Once a month is over, its heatmap goes to the same check-in channel as the
+// daily PDFs. Dedup is in the database, not in memory: a restart must not
+// re-post a month that already went out.
+async function checkMonthlyHeatmapReport() {
+  // Bail before marking anything as sent — otherwise a month would be recorded
+  // as reported while the webhook was misconfigured, and never retried.
+  if (!process.env.DISCORD_CHECKIN_WEBHOOK_URL) return;
+
+  const now = new Date();
+  if (now.getDate() < REPORT_ON_DAY_OF_MONTH) return;
+
+  const previous = shiftMonth(monthKeyOf(now), -1);
+  const reportId = `monthly-heatmap-${previous}`;
+  if (wasReportSent(reportId)) return;
+
+  const days = getMonthlyRatings(previous);
+  if (Object.keys(days).length === 0) {
+    // Nothing was ever logged that month — mark it done so this doesn't run
+    // every hour for the rest of the month.
+    markReportSent(reportId);
+    return;
+  }
+
+  try {
+    const pdfBuffer = await buildMonthlyHeatmapPdf({ monthKey: previous, days });
+    await sendCheckinPdfToDiscord(
+      pdfBuffer,
+      `relationship-heatmap-${previous}.pdf`,
+      `📊 Relationship heatmap — ${monthLabel(previous)}`
+    );
+    // Only after Discord accepted it, so a failed send retries next hour.
+    markReportSent(reportId);
+    console.log(`[discord] monthly heatmap sent for ${previous}`);
+  } catch (err) {
+    console.log(`[discord] monthly heatmap send failed for ${previous}: ${err.message}`);
+  }
+}
+
+checkMonthlyHeatmapReport();
+setInterval(checkMonthlyHeatmapReport, 60 * 60 * 1000);
 
 // Production: this same process serves the built frontend, so Railway only
 // needs to run one service. In dev, Vite's own server proxies /api here

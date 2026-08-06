@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCheckin } from '../hooks/useCheckin.js';
 import { questionsForType, typeLabel } from '../lib/checkin.js';
+import RelationshipHeatmap from '../components/RelationshipHeatmap.jsx';
 import './CheckInPage.css';
 
 const TYPES = ['daily', 'weekly'];
@@ -64,6 +65,10 @@ export default function CheckInPage({ user }) {
               onSubmit={(responses) => submit(user, responses)}
             />
           )}
+
+          {/* Always on, whatever today's check-in state is — it's the running
+              record of the month, not part of the form. */}
+          {activeType === 'daily' && <RelationshipHeatmap user={user} checkinStatus={checkin.status} />}
         </>
       )}
     </div>
@@ -142,6 +147,7 @@ function QuestionInput({ question, answer, onChoice, onDetail }) {
         {question.label}
         {question.required && <span className="checkin-required">*</span>}
       </label>
+      {question.hint && <p className="checkin-hint">{question.hint}</p>}
 
       {(question.type === 'scale' || question.type === 'choice_text') && (
         <div className="checkin-pill-row">

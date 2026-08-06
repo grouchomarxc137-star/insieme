@@ -52,7 +52,7 @@ function drawMixedText(doc, text, x, y, baseFont, options = {}) {
 
 // Pulled from src/index.css so the PDF reads as part of the same app rather
 // than a generic document.
-const THEME = {
+export const THEME = {
   bg: '#fbf6ef',
   text: '#4a4453',
   textMuted: '#8a8296',

@@ -31,6 +31,31 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_checkins_type_period ON checkins(type, period_key);
 `);
 
+// Heatmap ratings filled in by hand for days the check-in was forgotten. Kept
+// out of `checkins` on purpose: submitAnswers only ever writes the *current*
+// period, locks on submit, and fires the comparison PDF — none of which should
+// happen when someone backfills last Tuesday. One row per person per day.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS day_ratings (
+    date_key TEXT NOT NULL,
+    participant TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (date_key, participant)
+  );
+`);
+
+// Which recurring reports have already gone out, so a server restart can't
+// re-post a month's heatmap. The anniversary reminder gets away with an
+// in-memory Map because a duplicate nudge is harmless; a duplicate monthly
+// report on every restart for a whole month is not.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sent_reports (
+    id TEXT PRIMARY KEY,
+    sent_at TEXT NOT NULL
+  );
+`);
+
 // Reset Room — ported from personal/lovissimi's server/nest/db.js. One
 // session, many emotions worked through one at a time, each with its own
 // acknowledgment/reassurance attempts and an optional final agreement.
