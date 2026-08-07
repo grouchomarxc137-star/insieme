@@ -1,8 +1,14 @@
 // Adapted from personal/lovissimi's server/tickets/discordNotify.js — same
 // event messages and embed shape, but now:
-//   - edits a single message in place (via DISCORD_TICKETS_WEBHOOK_URL) as a
-//     ticket moves through its workflow, instead of posting a new message
-//     per update, so the channel only ever shows one message per open ticket;
+//   - keeps a single live message per ticket (via DISCORD_TICKETS_WEBHOOK_URL)
+//     as it moves through its workflow, instead of piling up a new message
+//     per update. Each update deletes the previous message and posts a fresh
+//     one rather than editing in place — Discord doesn't push a notification
+//     for edits, only for new messages, and a ticket update should actually
+//     notify the other person. At any given moment there's still only ever
+//     one message per open ticket, it just also re-surfaces at the bottom of
+//     the channel. Same delete-then-post pattern as the `lastMessageIds`
+//     dedup logic in index.js's /api/discord-message route.
 //   - once a ticket is closed, moves it into an auto-managed Discord thread
 //     ("🗂️ Ticket Archive") inside the tickets channel — created once via
 //     the bot token and reused after — and deletes the live message, so only
@@ -11,8 +17,8 @@
 // The archive requires bot access (DISCORD_BOT_TOKEN, DISCORD_GUILD_ID,
 // DISCORD_TICKETS_CHANNEL_ID — the channel DISCORD_TICKETS_WEBHOOK_URL posts
 // into) since creating/managing a thread isn't something a webhook can do.
-// If those aren't set, closing a ticket just edits the live message in place
-// instead of archiving it.
+// If those aren't set, closing a ticket just reposts the live message in
+// place instead of archiving it.
 import { otherAccount } from '../src/lib/tickets.js';
 import * as ticketsRepo from './ticketsRepo.js';
 
@@ -83,14 +89,6 @@ async function postLiveMessage(webhookUrl, embed) {
   return message.id;
 }
 
-async function editLiveMessage(webhookUrl, messageId, embed) {
-  return fetch(`${webhookUrl}/messages/${messageId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ embeds: [embed] }),
-  });
-}
-
 async function deleteLiveMessage(webhookUrl, messageId) {
   try {
     const response = await fetch(`${webhookUrl}/messages/${messageId}`, { method: 'DELETE' });
@@ -102,18 +100,14 @@ async function deleteLiveMessage(webhookUrl, messageId) {
   }
 }
 
-// Edits the ticket's live message in place, falling back to posting (and
-// storing) a new one if there isn't one yet or the old one is gone.
+// Replaces the ticket's live message: deletes the previous one (if any) and
+// posts a fresh one, so there's still only one message per ticket at rest,
+// but the update actually triggers a Discord notification (edits don't).
 async function upsertLiveMessage(webhookUrl, ticket, action) {
   const embed = buildEmbed(ticket, action);
 
   if (ticket.discordMessageId) {
-    const response = await editLiveMessage(webhookUrl, ticket.discordMessageId, embed);
-    if (response.ok) return;
-    if (response.status !== 404) {
-      throw new Error(`Discord rejected the ticket message edit: ${response.status} ${await response.text()}`);
-    }
-    // Message was deleted out from under us (manually, or a channel purge) — repost below.
+    await deleteLiveMessage(webhookUrl, ticket.discordMessageId);
   }
 
   const messageId = await postLiveMessage(webhookUrl, embed);
