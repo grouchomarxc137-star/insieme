@@ -1,5 +1,4 @@
 import { TABS } from '../App.jsx';
-import BrandMark from './BrandMark.jsx';
 import './TopBar.css';
 
 export default function TopBar({ activeTab, onSelectTab, user, onLogout }) {
@@ -7,7 +6,13 @@ export default function TopBar({ activeTab, onSelectTab, user, onLogout }) {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-brand pixel-font">
-          <BrandMark size={26} />
+          <img
+            src="/logo.png"
+            alt="Lovissimi"
+            width={26}
+            height={26}
+            style={{ width: 26, height: 26, borderRadius: '22%', objectFit: 'cover' }}
+          />
           <span className="topbar-brand-name">Lovissimi</span>
         </div>
         <nav className="topbar-nav">
