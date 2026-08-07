@@ -21,24 +21,35 @@ export const CATEGORY_OPTIONS = [
   'Need you present',
   'Need help with this',
   'Need affection and love',
+  'Task',
   'Other',
 ];
 
+// Shared by every ticket regardless of category — the P-number stays the
+// urgency scale, the label after it just reads as importance rather than
+// something tied specifically to emotional weight.
 export const PRIORITY_OPTIONS = [
-  'P5 - tiny feeling',
-  'P4 - attention needed',
-  'P3 - medium emotional damage',
-  'P2 - need reassurance',
-  'P1 - need my bestfriend',
+  'P5 - tiny task',
+  'P4 - low priority',
+  'P3 - normal priority',
+  'P2 - high priority',
+  'P1 - urgent',
 ];
 
+// 'None' is a real, selectable choice — picking it means the reply style
+// just doesn't show up on the ticket, see ticketHasReplyStyle below.
 export const REPLY_STYLE_OPTIONS = [
   'Soft and sweet',
   'Serious and direct',
   'Funny and cute',
   'Very reassuring',
   'Voice-note energy',
+  'None',
 ];
+
+export function ticketHasReplyStyle(ticket) {
+  return Boolean(ticket.replyStyle) && ticket.replyStyle !== 'None';
+}
 
 export function otherAccount(role) {
   return role === 'Principe' ? 'Principessa' : 'Principe';

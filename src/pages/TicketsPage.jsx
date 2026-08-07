@@ -7,6 +7,7 @@ import {
   PRIORITY_OPTIONS,
   REPLY_STYLE_OPTIONS,
   otherAccount,
+  ticketHasReplyStyle,
 } from '../lib/tickets.js';
 import './TicketsPage.css';
 
@@ -137,10 +138,9 @@ function TicketSection({ title, subtitle, count, emptyMessage, children }) {
 
 const INITIAL_FORM_STATE = {
   title: '',
-  category: CATEGORY_OPTIONS[0],
+  category: '',
   priority: PRIORITY_OPTIONS[0],
-  replyStyle: REPLY_STYLE_OPTIONS[0],
-  mood: 5,
+  replyStyle: '',
   message: '',
   need: '',
 };
@@ -179,6 +179,8 @@ function TicketForm({ user, otherName, onCreate }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  const isTask = form.category === 'Task';
+
   function setField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -187,6 +189,14 @@ function TicketForm({ user, otherName, onCreate }) {
     event.preventDefault();
     if (!form.title.trim() || !form.message.trim()) {
       setError('Give it a title and describe what happened.');
+      return;
+    }
+    if (!form.category) {
+      setError('Choose a category.');
+      return;
+    }
+    if (!form.replyStyle) {
+      setError('Choose a preferred reply style (or None).');
       return;
     }
     setSubmitting(true);
@@ -225,6 +235,9 @@ function TicketForm({ user, otherName, onCreate }) {
         <label>
           Category
           <select className="tickets-select" value={form.category} onChange={(e) => setField('category', e.target.value)}>
+            <option value="" disabled>
+              Select a category
+            </option>
             {CATEGORY_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -244,22 +257,19 @@ function TicketForm({ user, otherName, onCreate }) {
         </label>
       </div>
 
-      <div className="tickets-form-row">
-        <label>
-          Preferred reply style
-          <select className="tickets-select" value={form.replyStyle} onChange={(e) => setField('replyStyle', e.target.value)}>
-            {REPLY_STYLE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Mood intensity — {form.mood}/5
-          <input type="range" min="1" max="5" value={form.mood} onChange={(e) => setField('mood', Number(e.target.value))} />
-        </label>
-      </div>
+      <label>
+        Preferred reply style
+        <select className="tickets-select" value={form.replyStyle} onChange={(e) => setField('replyStyle', e.target.value)}>
+          <option value="" disabled>
+            Select a reply style
+          </option>
+          {REPLY_STYLE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label>
         What happened?
@@ -267,7 +277,9 @@ function TicketForm({ user, otherName, onCreate }) {
           className="tickets-textarea"
           value={form.message}
           onChange={(e) => setField('message', e.target.value)}
-          placeholder="Dump the feeling here. No need to organize it perfectly."
+          placeholder={
+            isTask ? "Describe the task — what needs to get done." : 'Dump the feeling here. No need to organize it perfectly.'
+          }
           rows={3}
         />
       </label>
@@ -278,7 +290,11 @@ function TicketForm({ user, otherName, onCreate }) {
           className="tickets-textarea"
           value={form.need}
           onChange={(e) => setField('need', e.target.value)}
-          placeholder="Advice, reassurance, apology, attention, comfort, explanation…"
+          placeholder={
+            isTask
+              ? 'What does done look like, and by when?'
+              : 'Advice, reassurance, apology, attention, comfort, explanation…'
+          }
           rows={2}
         />
       </label>
@@ -287,7 +303,7 @@ function TicketForm({ user, otherName, onCreate }) {
       {success && <p className="tickets-success">{success}</p>}
 
       <button type="submit" className="tickets-submit-btn" disabled={submitting}>
-        {submitting ? 'Sending…' : 'Submit love ticket 💛'}
+        {submitting ? 'Sending…' : isTask ? 'Submit ticket' : 'Submit love ticket 💛'}
       </button>
     </form>
   );
@@ -296,7 +312,7 @@ function TicketForm({ user, otherName, onCreate }) {
 function TicketMeta({ ticket }) {
   return (
     <div className="ticket-meta">
-      #{ticket.id} · {ticket.category} · {ticket.priority} · mood {ticket.mood}/5 · {formatDate(ticket.createdAt)}
+      #{ticket.id} · {ticket.category} · {ticket.priority} · {formatDate(ticket.createdAt)}
     </div>
   );
 }
@@ -322,9 +338,11 @@ function TicketSummary({ ticket, status }) {
 function TicketBody({ ticket }) {
   return (
     <>
-      <div className="ticket-chip-row">
-        <span className="tickets-chip">💌 {ticket.replyStyle}</span>
-      </div>
+      {ticketHasReplyStyle(ticket) && (
+        <div className="ticket-chip-row">
+          <span className="tickets-chip">💌 {ticket.replyStyle}</span>
+        </div>
+      )}
       <div className="ticket-body">
         <strong>What happened:</strong>
         <p>{ticket.message}</p>
