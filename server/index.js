@@ -26,6 +26,7 @@ import * as resetRoomRepo from './resetRoomRepo.js';
 import { decorateState } from './resetRoomStateMachine.js';
 import { registerSocketHandlers } from './resetRoomSocket.js';
 import { startDiscordBot, setStatusNickname } from './resetRoomDiscordBot.js';
+import { relayDiscordMessage } from './discordRelay.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES } from '../src/lib/tickets.js';
@@ -41,15 +42,13 @@ const distDir = path.join(__dirname, '..', 'dist');
 const app = express();
 app.use(express.json());
 
-// Tracks the most recent message id per slot (e.g. "Principessa-status") so a
-// new send can delete the old one first, keeping only the latest per person
-// per type visible in the channel. In-memory only — resets on server
-// restart, at which point the old message just stops getting cleaned up.
-const lastMessageIds = new Map();
-
 // The only place that ever sees DISCORD_WEBHOOK_URL — the frontend just
 // posts message text (plus an optional dedup `key`) here and never touches
-// the real webhook.
+// the real webhook. The dedup-by-key delete-then-post logic lives in
+// discordRelay.js so it's shared with the in-Discord status menus
+// (server/resetRoomDiscordBot.js) — a mood changed from either surface
+// replaces the same "latest status" message rather than each surface
+// tracking its own.
 app.post('/api/discord-message', async (req, res) => {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -64,34 +63,7 @@ app.post('/api/discord-message', async (req, res) => {
   }
 
   try {
-    if (key && lastMessageIds.has(key)) {
-      const previousId = lastMessageIds.get(key);
-      try {
-        const deleteResponse = await fetch(`${webhookUrl}/messages/${previousId}`, { method: 'DELETE' });
-        console.log(`[discord] delete ${previousId} for key "${key}": ${deleteResponse.status}`);
-      } catch (err) {
-        console.log(`[discord] delete ${previousId} for key "${key}" failed: ${err.message}`);
-      }
-      lastMessageIds.delete(key);
-    }
-
-    const discordResponse = await fetch(`${webhookUrl}?wait=true`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
-    });
-
-    if (!discordResponse.ok) {
-      const detail = await discordResponse.text();
-      res.status(502).json({ error: `Discord rejected the message: ${detail}` });
-      return;
-    }
-
-    if (key) {
-      const message = await discordResponse.json();
-      lastMessageIds.set(key, message.id);
-      console.log(`[discord] posted ${message.id} for key "${key}"`);
-    }
+    await relayDiscordMessage({ webhookUrl, content, key });
 
     // Status updates (not Emergency Mood) also carry `emoji`, which is the
     // signal to sync it onto the sender's server nickname.

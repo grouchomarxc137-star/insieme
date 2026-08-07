@@ -19,6 +19,8 @@ import {
 import * as repo from './resetRoomRepo.js';
 import * as sm from './resetRoomStateMachine.js';
 import { SESSION_STATUS, ROLES, DEFAULT_NAMES } from './resetRoomConstants.js';
+import { relayDiscordMessage } from './discordRelay.js';
+import { STATUS_OPTIONS, STATUS_USERS, formatStatusMessage } from '../src/lib/statusOptions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOVE_VEST_DIR = path.join(__dirname, 'assets', 'lovevest');
@@ -40,6 +42,17 @@ const CLEARCHANNEL_PROTECTED_ID = '1448283314635935897';
 const STATUS_USER_IDS = {
   Principe: '1497122888090783904',
   Principessa: '539848335104802820',
+};
+
+// customId format for the persistent mood buttons: "status:<user>:<optionId>",
+// e.g. "status:Principe:locked-in".
+const STATUS_BUTTON_PREFIX = 'status';
+
+const STATUS_BUTTON_STYLE = {
+  'locked-in': ButtonStyle.Danger,
+  multitasking: ButtonStyle.Secondary,
+  free: ButtonStyle.Primary,
+  'divine-attention': ButtonStyle.Success,
 };
 
 let client = null;
@@ -83,6 +96,76 @@ async function clearChannelMessages(channel) {
     }
   }
   return totalDeleted;
+}
+
+function buildStatusMenuRow(user) {
+  return new ActionRowBuilder().addComponents(
+    STATUS_OPTIONS.map((option) =>
+      new ButtonBuilder()
+        .setCustomId(`${STATUS_BUTTON_PREFIX}:${user}:${option.id}`)
+        .setLabel(option.label)
+        .setStyle(STATUS_BUTTON_STYLE[option.id] ?? ButtonStyle.Secondary)
+    )
+  );
+}
+
+function isStatusMenuFor(message, user) {
+  const prefix = `${STATUS_BUTTON_PREFIX}:${user}:`;
+  return message.components?.some((row) => row.components?.some((c) => c.customId?.startsWith(prefix)));
+}
+
+// Finds this person's existing mood-menu message in the status channel (so a
+// bot restart reuses it instead of posting a duplicate), or creates it the
+// first time. Menus are never reposted after that — only the live status
+// message underneath them gets replaced — so they stay put at the top of the
+// channel as a fixed control panel.
+async function ensureStatusMenu(channel, user) {
+  const recent = await channel.messages.fetch({ limit: 50 });
+  let message = recent.find((m) => m.author.id === client.user.id && isStatusMenuFor(m, user));
+
+  if (!message) {
+    message = await channel.send({
+      content: `**${user}** — tap a mood to update it here (and on the app):`,
+      components: [buildStatusMenuRow(user)],
+    });
+    console.log(`[discord] created status menu for ${user}: ${message.id}`);
+  }
+
+  if (!message.pinned) {
+    try {
+      await message.pin();
+    } catch (err) {
+      console.log(`[discord] couldn't pin ${user} status menu: ${err.message}`);
+    }
+  }
+}
+
+async function ensureStatusMenus() {
+  const channelId = process.env.DISCORD_STATUS_CHANNEL_ID;
+  if (!channelId) {
+    console.log('[discord] DISCORD_STATUS_CHANNEL_ID not set, skipping status menu setup');
+    return;
+  }
+  try {
+    const channel = await client.channels.fetch(channelId);
+    for (const user of STATUS_USERS) {
+      await ensureStatusMenu(channel, user);
+    }
+  } catch (err) {
+    console.error('[discord] failed to set up status menus:', err.message);
+  }
+}
+
+// Same effect as picking a mood on the website's Status panel: replaces the
+// person's live status message (delete-then-post, via the same relay and
+// dedup key the website posts through) and syncs the emoji onto their
+// nickname. Keeps the two surfaces interchangeable — whichever one is used
+// last wins, and neither leaves a stale duplicate behind.
+async function postStatusFromMenu(user, option) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not configured on the server.');
+  await relayDiscordMessage({ webhookUrl, content: formatStatusMessage(user, option), key: `${user}-status` });
+  await setStatusNickname(user, option.emoji);
 }
 
 async function registerCommands(clientId, guildId, token) {
@@ -135,6 +218,7 @@ export function startDiscordBot() {
     } catch (err) {
       console.error('[discord] failed to register commands:', err.message);
     }
+    await ensureStatusMenus();
   });
 
   // While a reset protocol is active, delete every human message anywhere in the
@@ -155,6 +239,28 @@ export function startDiscordBot() {
   });
 
   client.on('interactionCreate', async (interaction) => {
+    // Mood buttons from the persistent status menus. Handled first and
+    // narrowly scoped to "status:" customIds so the /clearchannel confirm
+    // buttons (handled separately via awaitMessageComponent) still fall
+    // through untouched below.
+    if (interaction.isButton() && interaction.customId.startsWith(`${STATUS_BUTTON_PREFIX}:`)) {
+      if (interaction.guildId !== guildId) return;
+
+      const [, statusUser, optionId] = interaction.customId.split(':');
+      const option = STATUS_OPTIONS.find((o) => o.id === optionId);
+      if (!option) return;
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      try {
+        await postStatusFromMenu(statusUser, option);
+        await interaction.editReply(`${statusUser} is now ${option.label}`);
+      } catch (err) {
+        console.error(`[discord] status menu update failed for ${statusUser}:`, err.message);
+        await interaction.editReply("Couldn't update the status — try again.");
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
     if (interaction.guildId !== guildId) return;
 

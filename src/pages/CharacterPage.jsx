@@ -8,34 +8,8 @@ import {
   CHARACTER_STAGE_LEVELS,
   MAX_LEVEL,
 } from '../lib/growth.js';
+import { STATUS_OPTIONS } from '../lib/statusOptions.js';
 import './CharacterPage.css';
-
-const STATUS_OPTIONS = [
-  {
-    id: 'locked-in',
-    emoji: '🔒',
-    label: '🔒 Locked in',
-    description: "Don't expect a response or engagement — even if I do reply, it's not expected.",
-  },
-  {
-    id: 'multitasking',
-    emoji: '🌀',
-    label: '🌀 Multitasking',
-    description: "Busy, but can text in between. Don't expect full engagement.",
-  },
-  {
-    id: 'free',
-    emoji: '💬',
-    label: '💬 Free to text',
-    description: "We text and engage, but I might get distracted or step away once in a while.",
-  },
-  {
-    id: 'divine-attention',
-    emoji: '✨',
-    label: '✨ Divine attention',
-    description: "All yours — no dividing attention with anything else.",
-  },
-];
 
 const EMERGENCY_MOOD_OPTIONS = [
   { id: 'overwhelmed', label: '😩 Overwhelmed' },
