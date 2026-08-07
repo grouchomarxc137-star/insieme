@@ -47,6 +47,11 @@ export const REPLY_STYLE_OPTIONS = [
   'None',
 ];
 
+// UI-only sentinel: picking this in the dropdown reveals a free-text input
+// instead of being stored as the reply style itself. Whatever gets typed
+// there is what actually ends up in ticket.replyStyle.
+export const CUSTOM_REPLY_STYLE = 'Type my own…';
+
 export function ticketHasReplyStyle(ticket) {
   return Boolean(ticket.replyStyle) && ticket.replyStyle !== 'None';
 }

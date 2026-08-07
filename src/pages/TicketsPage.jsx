@@ -6,6 +6,7 @@ import {
   CATEGORY_OPTIONS,
   PRIORITY_OPTIONS,
   REPLY_STYLE_OPTIONS,
+  CUSTOM_REPLY_STYLE,
   otherAccount,
   ticketHasReplyStyle,
 } from '../lib/tickets.js';
@@ -141,6 +142,7 @@ const INITIAL_FORM_STATE = {
   category: '',
   priority: PRIORITY_OPTIONS[0],
   replyStyle: '',
+  customReplyStyle: '',
   message: '',
   need: '',
 };
@@ -199,11 +201,17 @@ function TicketForm({ user, otherName, onCreate }) {
       setError('Choose a preferred reply style (or None).');
       return;
     }
+    if (form.replyStyle === CUSTOM_REPLY_STYLE && !form.customReplyStyle.trim()) {
+      setError('Type your preferred reply style.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
-      const ticket = await onCreate({ ...form, createdBy: user });
+      const replyStyle = form.replyStyle === CUSTOM_REPLY_STYLE ? form.customReplyStyle.trim() : form.replyStyle;
+      const { customReplyStyle, ...rest } = form;
+      const ticket = await onCreate({ ...rest, replyStyle, createdBy: user });
       setForm(INITIAL_FORM_STATE);
       setSuccess(`Ticket #${ticket.id} sent to ${otherName}.`);
     } catch (err) {
@@ -268,8 +276,22 @@ function TicketForm({ user, otherName, onCreate }) {
               {option}
             </option>
           ))}
+          <option value={CUSTOM_REPLY_STYLE}>{CUSTOM_REPLY_STYLE}</option>
         </select>
       </label>
+
+      {form.replyStyle === CUSTOM_REPLY_STYLE && (
+        <label>
+          Your own reply style
+          <input
+            type="text"
+            className="tickets-input"
+            value={form.customReplyStyle}
+            onChange={(e) => setField('customReplyStyle', e.target.value)}
+            placeholder="e.g. Straightforward but gentle"
+          />
+        </label>
+      )}
 
       <label>
         What happened?

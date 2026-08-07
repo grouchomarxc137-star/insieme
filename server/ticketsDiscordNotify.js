@@ -19,7 +19,7 @@
 // into) since creating/managing a thread isn't something a webhook can do.
 // If those aren't set, closing a ticket just reposts the live message in
 // place instead of archiving it.
-import { otherAccount, ticketWaitingOn } from '../src/lib/tickets.js';
+import { otherAccount, ticketWaitingOn, ticketHasReplyStyle } from '../src/lib/tickets.js';
 import * as ticketsRepo from './ticketsRepo.js';
 
 const DISCORD_API = 'https://discord.com/api/v10';
@@ -64,6 +64,7 @@ function buildEmbed(ticket, action) {
       { name: 'Category', value: ticket.category, inline: true },
       { name: 'Priority', value: ticket.priority, inline: true },
       { name: 'Mood', value: `${ticket.mood}/5`, inline: true },
+      ...(ticketHasReplyStyle(ticket) ? [{ name: 'Reply style', value: truncate(ticket.replyStyle, 1024), inline: true }] : []),
       { name: 'What happened', value: truncate(ticket.message, 1024) || 'Not specified' },
       { name: 'Need', value: truncate(ticket.need, 1024) || 'Not specified' },
       ...(ticket.reply ? [{ name: 'Reply', value: truncate(ticket.reply, 1024) }] : []),
