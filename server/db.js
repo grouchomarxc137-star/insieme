@@ -164,5 +164,11 @@ const ticketColumns = db.prepare(`PRAGMA table_info(tickets)`).all().map((c) => 
 if (!ticketColumns.includes('validated_at')) {
   db.exec(`ALTER TABLE tickets ADD COLUMN validated_at TEXT`);
 }
+// Tracks the live Discord message for this ticket so updates can edit it in
+// place instead of posting a new message each time. Cleared once the ticket
+// is closed and moved into the Discord archive thread.
+if (!ticketColumns.includes('discord_message_id')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN discord_message_id TEXT`);
+}
 
 export default db;

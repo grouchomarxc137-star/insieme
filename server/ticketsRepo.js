@@ -34,6 +34,7 @@ function ticketFromRow(row) {
     repliedAt: row.replied_at || '',
     validatedAt: row.validated_at || '',
     confirmedAt: row.confirmed_at || '',
+    discordMessageId: row.discord_message_id || '',
   };
 }
 
@@ -157,4 +158,15 @@ export function applyTicketAction(id, { actor, action, status, reply }) {
 
 export function deleteTicket(id) {
   db.prepare(`DELETE FROM tickets WHERE id = ?`).run(id);
+}
+
+// Discord message id tracking — lets the notifier edit the same message in
+// place instead of posting a new one on every update, and know when a
+// ticket no longer has a live message (e.g. after being archived).
+export function setDiscordMessageId(id, messageId) {
+  db.prepare(`UPDATE tickets SET discord_message_id = ? WHERE id = ?`).run(messageId, id);
+}
+
+export function clearDiscordMessageId(id) {
+  db.prepare(`UPDATE tickets SET discord_message_id = NULL WHERE id = ?`).run(id);
 }
