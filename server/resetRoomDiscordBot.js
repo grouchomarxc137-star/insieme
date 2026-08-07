@@ -15,6 +15,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
 } from 'discord.js';
 import * as repo from './resetRoomRepo.js';
 import * as sm from './resetRoomStateMachine.js';
@@ -48,11 +49,17 @@ const STATUS_USER_IDS = {
 // e.g. "status:Principe:locked-in".
 const STATUS_BUTTON_PREFIX = 'status';
 
-const STATUS_BUTTON_STYLE = {
-  'locked-in': ButtonStyle.Danger,
-  multitasking: ButtonStyle.Secondary,
-  free: ButtonStyle.Primary,
-  'divine-attention': ButtonStyle.Success,
+// All mood buttons stay the same neutral gray (Discord's "Secondary" style) —
+// the person's identity comes from the embed accent color instead, not the
+// button color.
+const STATUS_BUTTON_STYLE = ButtonStyle.Secondary;
+
+// Left-edge accent color for each person's status menu embed. Discord's
+// button API only offers 5 fixed styles with no custom colors, so this is
+// the one place in the message that can carry an arbitrary hex color.
+const STATUS_MENU_COLOR = {
+  Principe: 0xe8935a, // light orange
+  Principessa: 0xe8c34f, // light golden yellow
 };
 
 let client = null;
@@ -104,7 +111,7 @@ function buildStatusMenuRow(user) {
       new ButtonBuilder()
         .setCustomId(`${STATUS_BUTTON_PREFIX}:${user}:${option.id}`)
         .setLabel(option.label)
-        .setStyle(STATUS_BUTTON_STYLE[option.id] ?? ButtonStyle.Secondary)
+        .setStyle(STATUS_BUTTON_STYLE)
     )
   );
 }
@@ -118,17 +125,25 @@ function isStatusMenuFor(message, user) {
 // bot restart reuses it instead of posting a duplicate), or creates it the
 // first time. Menus are never reposted after that — only the live status
 // message underneath them gets replaced — so they stay put at the top of the
-// channel as a fixed control panel.
+// channel as a fixed control panel. Each restart also re-syncs the existing
+// menu's embed/buttons to the current look (e.g. accent color or button
+// style tweaks), so a code change like that doesn't need a manual repost.
 async function ensureStatusMenu(channel, user) {
   const recent = await channel.messages.fetch({ limit: 50 });
   let message = recent.find((m) => m.author.id === client.user.id && isStatusMenuFor(m, user));
 
+  const embed = new EmbedBuilder()
+    .setColor(STATUS_MENU_COLOR[user] ?? null)
+    .setDescription(`**${user}** — tap a mood to update it here (and on the app):`);
+
   if (!message) {
     message = await channel.send({
-      content: `**${user}** — tap a mood to update it here (and on the app):`,
+      embeds: [embed],
       components: [buildStatusMenuRow(user)],
     });
     console.log(`[discord] created status menu for ${user}: ${message.id}`);
+  } else {
+    await message.edit({ content: '', embeds: [embed], components: [buildStatusMenuRow(user)] });
   }
 
   if (!message.pinned) {
