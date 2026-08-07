@@ -171,4 +171,18 @@ if (!ticketColumns.includes('discord_message_id')) {
   db.exec(`ALTER TABLE tickets ADD COLUMN discord_message_id TEXT`);
 }
 
+// Backs discordRelay.js's "delete the previous message for this key, then
+// post a new one" dedup (used by the website's Status/Emergency Mood panels
+// and the in-Discord status buttons). This used to be an in-memory Map,
+// which meant a server restart forgot every key and the next update for
+// that key skipped the delete and just piled a new message on top of the
+// old one instead of replacing it — persisting it here fixes that.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS discord_relay_messages (
+    key TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+`);
+
 export default db;
