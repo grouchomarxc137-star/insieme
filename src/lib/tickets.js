@@ -43,3 +43,22 @@ export const REPLY_STYLE_OPTIONS = [
 export function otherAccount(role) {
   return role === 'Principe' ? 'Principessa' : 'Principe';
 }
+
+// Who needs to act next for a ticket to move forward — used to make that
+// obvious at a glance (e.g. a color cue) rather than requiring someone to
+// read the status text. Bounces back and forth as the ticket progresses:
+// the other person works it, the creator confirms it's solved, then the
+// other person closes it. Returns null once handled — there's no one left
+// to act on it.
+export function ticketWaitingOn(ticket) {
+  switch (ticket.status) {
+    case TICKET_STATUS.AWAITING:
+      return ticket.createdBy;
+    case TICKET_STATUS.VALIDATED:
+      return otherAccount(ticket.createdBy);
+    case TICKET_STATUS.HANDLED:
+      return null;
+    default: // RECEIVED, READING, DEBUGGING
+      return otherAccount(ticket.createdBy);
+  }
+}

@@ -19,13 +19,22 @@
 // into) since creating/managing a thread isn't something a webhook can do.
 // If those aren't set, closing a ticket just reposts the live message in
 // place instead of archiving it.
-import { otherAccount } from '../src/lib/tickets.js';
+import { otherAccount, ticketWaitingOn } from '../src/lib/tickets.js';
 import * as ticketsRepo from './ticketsRepo.js';
 
 const DISCORD_API = 'https://discord.com/api/v10';
 const ARCHIVE_THREAD_NAME = '🗂️ Ticket Archive';
 const GUILD_PUBLIC_THREAD = 11;
 const THREAD_ARCHIVED_ERROR_CODE = 50083;
+const ARCHIVE_COLOR = 0x8a8f98;
+
+// The embed's left border color is the at-a-glance cue for whose turn it is
+// — so you can tell from the channel list, without opening the message,
+// whether a ticket needs Principe or Principessa to do something next.
+const WAITING_ON_COLOR = {
+  Principessa: 0xf5b51b, // gold/yellow
+  Principe: 0xe8590c, // orange
+};
 
 function truncate(str, max) {
   if (!str) return str;
@@ -45,10 +54,11 @@ const ACTION_MESSAGE = {
 
 function buildEmbed(ticket, action) {
   const build = ACTION_MESSAGE[action] || ACTION_MESSAGE.update_ticket;
+  const waitingOn = ticketWaitingOn(ticket);
   return {
     title: `#${ticket.id} · ${truncate(ticket.title, 200)}`,
     description: build(ticket),
-    color: 0xf5b51b,
+    color: WAITING_ON_COLOR[waitingOn] ?? ARCHIVE_COLOR,
     fields: [
       { name: 'Status', value: ticket.status, inline: true },
       { name: 'Category', value: ticket.category, inline: true },
@@ -58,14 +68,14 @@ function buildEmbed(ticket, action) {
       { name: 'Need', value: truncate(ticket.need, 1024) || 'Not specified' },
       ...(ticket.reply ? [{ name: 'Reply', value: truncate(ticket.reply, 1024) }] : []),
     ],
-    footer: { text: `Opened ${ticket.createdAt}` },
+    footer: { text: waitingOn ? `⏳ Waiting on ${waitingOn} · Opened ${ticket.createdAt}` : `Opened ${ticket.createdAt}` },
     timestamp: new Date().toISOString(),
   };
 }
 
 function buildArchiveEmbed(ticket) {
   const embed = buildEmbed(ticket, 'close_ticket');
-  embed.color = 0x8a8f98;
+  embed.color = ARCHIVE_COLOR;
   embed.fields.push(
     { name: 'Opened', value: ticket.createdAt, inline: true },
     { name: 'Solved', value: ticket.confirmedAt || ticket.updatedAt, inline: true }
