@@ -58,6 +58,9 @@ export default function LoginPage({ onLogin }) {
           <span>Password</span>
           <input
             type="password"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="off"
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);
