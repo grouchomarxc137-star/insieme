@@ -80,6 +80,59 @@
   cursor: not-allowed;
 }
 
+.tickets-create-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tickets-open-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--gold-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 14px 20px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tickets-open-btn:hover {
+  background: var(--surface-alt);
+}
+
+.tickets-open-btn-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.tickets-open-btn-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* CSS-only accordion: animating a grid track is smoother and simpler than
+   animating height/max-height, and doesn't need JS to measure content. */
+.tickets-form-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.tickets-form-collapse.is-open {
+  grid-template-rows: 1fr;
+}
+
+.tickets-form-collapse-inner {
+  overflow: hidden;
+}
+
 .tickets-error {
   margin: 0;
   color: #b3453a;
@@ -146,6 +199,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* Roughly 4 minimized ticket rows tall (68.5px card + 12px gap each),
+     with a sliver of the 5th peeking to hint there's more to scroll to. */
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .ticket-card {
@@ -166,10 +224,15 @@
 
 .ticket-card--handled {
   border-top-color: var(--mint-strong);
+}
+
+/* Every ticket card is a <details> element: the summary is the minimized
+   appearance (title + status only), the rest is the expanded content. */
+.ticket-card--collapsible {
   padding: 0;
 }
 
-.ticket-card--handled summary {
+.ticket-summary {
   list-style: none;
   cursor: pointer;
   padding: 14px 16px;
@@ -179,40 +242,38 @@
   gap: 10px;
 }
 
-.ticket-card--handled summary::-webkit-details-marker {
+.ticket-summary::-webkit-details-marker {
   display: none;
 }
 
-.ticket-handled-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.ticket-handled-title {
+.ticket-summary-title {
   font-weight: 800;
   font-size: 14px;
   color: var(--text);
 }
 
-.ticket-handled-content {
+.ticket-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ticket-summary-chevron {
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+details[open] > .ticket-summary .ticket-summary-chevron {
+  transform: rotate(180deg);
+}
+
+.ticket-details-content {
   padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.ticket-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ticket-card-top h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
 }
 
 .ticket-meta {

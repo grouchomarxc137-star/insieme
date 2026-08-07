@@ -46,7 +46,7 @@ export default function TicketsPage({ user }) {
         <p>A safe place to raise energy discrepancies and track them until they're resolved.</p>
       </div>
 
-      <TicketForm user={user} otherName={otherName} onCreate={createTicket} />
+      <CreateTicketSection user={user} otherName={otherName} onCreate={createTicket} />
 
       {error && <p className="tickets-error">{error}</p>}
       {loading ? (
@@ -145,6 +145,34 @@ const INITIAL_FORM_STATE = {
   need: '',
 };
 
+// The create form starts collapsed behind a button — better visibility of
+// what's underneath (the ticket lists) and one clear ergonomic entry point
+// to open it, instead of a form that's always sprawled open at the top.
+function CreateTicketSection({ user, otherName, onCreate }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="tickets-create-section">
+      <button
+        type="button"
+        className="tickets-open-btn"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+      >
+        <span>💛 Open a ticket</span>
+        <span className={`tickets-open-btn-chevron${open ? ' is-open' : ''}`} aria-hidden="true">
+          ▾
+        </span>
+      </button>
+      <div className={`tickets-form-collapse${open ? ' is-open' : ''}`}>
+        <div className="tickets-form-collapse-inner">
+          <TicketForm user={user} otherName={otherName} onCreate={onCreate} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TicketForm({ user, otherName, onCreate }) {
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [submitting, setSubmitting] = useState(false);
@@ -177,7 +205,7 @@ function TicketForm({ user, otherName, onCreate }) {
 
   return (
     <form className="tickets-form" onSubmit={handleSubmit}>
-      <h2>Open a ticket</h2>
+      <h2>Ticket details</h2>
       <p className="tickets-form-intro">
         Explain what happened, how you feel, and what kind of response or support you need.
       </p>
@@ -273,6 +301,24 @@ function TicketMeta({ ticket }) {
   );
 }
 
+// Minimized appearance shared by every ticket card: just the title and the
+// status, as a native <details> summary so the browser handles the
+// expand/collapse state for us (and keeps it stable across re-renders since
+// the ticket's key doesn't change).
+function TicketSummary({ ticket, status }) {
+  return (
+    <summary className="ticket-summary">
+      <span className="ticket-summary-title">{ticket.title}</span>
+      <span className="ticket-summary-right">
+        <span className="tickets-status-pill">{status || ticket.status}</span>
+        <span className="ticket-summary-chevron" aria-hidden="true">
+          ▾
+        </span>
+      </span>
+    </summary>
+  );
+}
+
 function TicketBody({ ticket }) {
   return (
     <>
@@ -332,50 +378,52 @@ function OpenTicketCard({ ticket, user, onUpdate, onDelete }) {
   }
 
   return (
-    <article className="ticket-card">
-      <div className="ticket-card-top">
-        <div>
-          <h3>{ticket.title}</h3>
-          <TicketMeta ticket={ticket} />
+    <details className="ticket-card ticket-card--collapsible">
+      <TicketSummary ticket={ticket} status={status} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+
+        <label className="ticket-reply-label">
+          Status
+          <select
+            className="tickets-select tickets-status-select"
+            value={status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+          >
+            {OPEN_STATUSES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <TicketBody ticket={ticket} />
+
+        <label className="ticket-reply-label">
+          Your reply
+          <textarea
+            className="tickets-textarea"
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Write something soft, honest, funny, or reassuring…"
+            rows={3}
+          />
+          <span className="tickets-hint">Saving locks it in and asks them to confirm it's solved.</span>
+        </label>
+
+        {error && <p className="tickets-error">{error}</p>}
+
+        <div className="ticket-actions">
+          <button type="button" className="tickets-btn tickets-btn--primary" onClick={saveReply} disabled={busy}>
+            Save reply
+          </button>
+          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
+            Delete
+          </button>
         </div>
-        <select
-          className="tickets-select tickets-status-select"
-          value={status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-        >
-          {OPEN_STATUSES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
       </div>
-
-      <TicketBody ticket={ticket} />
-
-      <label className="ticket-reply-label">
-        Your reply
-        <textarea
-          className="tickets-textarea"
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-          placeholder="Write something soft, honest, funny, or reassuring…"
-          rows={3}
-        />
-        <span className="tickets-hint">Saving locks it in and asks them to confirm it's solved.</span>
-      </label>
-
-      {error && <p className="tickets-error">{error}</p>}
-
-      <div className="ticket-actions">
-        <button type="button" className="tickets-btn tickets-btn--primary" onClick={saveReply} disabled={busy}>
-          Save reply
-        </button>
-        <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
-          Delete
-        </button>
-      </div>
-    </article>
+    </details>
   );
 }
 
@@ -420,37 +468,34 @@ function ValidateTicketCard({ ticket, user, onUpdate, onDelete }) {
   }
 
   return (
-    <article className="ticket-card">
-      <div className="ticket-card-top">
-        <div>
-          <h3>{ticket.title}</h3>
-          <TicketMeta ticket={ticket} />
+    <details className="ticket-card ticket-card--collapsible">
+      <TicketSummary ticket={ticket} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+
+        <TicketBody ticket={ticket} />
+
+        <div className="ticket-locked-reply">
+          <strong>Their reply</strong>
+          <p>{ticket.reply || 'No reply text saved.'}</p>
         </div>
-        <span className="tickets-status-pill">{ticket.status}</span>
+        <p className="tickets-hint">Replied {formatDate(ticket.repliedAt)}. Did this actually solve it?</p>
+
+        {error && <p className="tickets-error">{error}</p>}
+
+        <div className="ticket-actions">
+          <button type="button" className="tickets-btn tickets-btn--primary" onClick={validate} disabled={busy}>
+            Confirm solved 🌟
+          </button>
+          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={reopen} disabled={busy}>
+            Needs more work 🔁
+          </button>
+          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
+            Delete
+          </button>
+        </div>
       </div>
-
-      <TicketBody ticket={ticket} />
-
-      <div className="ticket-locked-reply">
-        <strong>Their reply</strong>
-        <p>{ticket.reply || 'No reply text saved.'}</p>
-      </div>
-      <p className="tickets-hint">Replied {formatDate(ticket.repliedAt)}. Did this actually solve it?</p>
-
-      {error && <p className="tickets-error">{error}</p>}
-
-      <div className="ticket-actions">
-        <button type="button" className="tickets-btn tickets-btn--primary" onClick={validate} disabled={busy}>
-          Confirm solved 🌟
-        </button>
-        <button type="button" className="tickets-btn tickets-btn--ghost" onClick={reopen} disabled={busy}>
-          Needs more work 🔁
-        </button>
-        <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
-          Delete
-        </button>
-      </div>
-    </article>
+    </details>
   );
 }
 
@@ -483,34 +528,31 @@ function CloseTicketCard({ ticket, user, onUpdate, onDelete }) {
   }
 
   return (
-    <article className="ticket-card">
-      <div className="ticket-card-top">
-        <div>
-          <h3>{ticket.title}</h3>
-          <TicketMeta ticket={ticket} />
+    <details className="ticket-card ticket-card--collapsible">
+      <TicketSummary ticket={ticket} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+
+        <TicketBody ticket={ticket} />
+
+        <div className="ticket-locked-reply">
+          <strong>Your locked reply</strong>
+          <p>{ticket.reply || 'No reply text saved.'}</p>
         </div>
-        <span className="tickets-status-pill">{ticket.status}</span>
+        <p className="tickets-hint">Confirmed solved {formatDate(ticket.validatedAt)}. Close it out.</p>
+
+        {error && <p className="tickets-error">{error}</p>}
+
+        <div className="ticket-actions">
+          <button type="button" className="tickets-btn tickets-btn--primary" onClick={close} disabled={busy}>
+            Close ticket ✅
+          </button>
+          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
+            Delete
+          </button>
+        </div>
       </div>
-
-      <TicketBody ticket={ticket} />
-
-      <div className="ticket-locked-reply">
-        <strong>Your locked reply</strong>
-        <p>{ticket.reply || 'No reply text saved.'}</p>
-      </div>
-      <p className="tickets-hint">Confirmed solved {formatDate(ticket.validatedAt)}. Close it out.</p>
-
-      {error && <p className="tickets-error">{error}</p>}
-
-      <div className="ticket-actions">
-        <button type="button" className="tickets-btn tickets-btn--primary" onClick={close} disabled={busy}>
-          Close ticket ✅
-        </button>
-        <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
-          Delete
-        </button>
-      </div>
-    </article>
+    </details>
   );
 }
 
@@ -529,29 +571,26 @@ function WaitingOnThemCard({ ticket, otherName, onDelete }) {
   }
 
   return (
-    <article className="ticket-card">
-      <div className="ticket-card-top">
-        <div>
-          <h3>{ticket.title}</h3>
-          <TicketMeta ticket={ticket} />
+    <details className="ticket-card ticket-card--collapsible">
+      <TicketSummary ticket={ticket} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+
+        <div className="ticket-locked-reply">
+          <strong>Your locked reply</strong>
+          <p>{ticket.reply || 'No reply text saved.'}</p>
         </div>
-        <span className="tickets-status-pill">{ticket.status}</span>
-      </div>
+        <p className="tickets-hint">Replied {formatDate(ticket.repliedAt)}. Waiting on {otherName} to confirm it's solved.</p>
 
-      <div className="ticket-locked-reply">
-        <strong>Your locked reply</strong>
-        <p>{ticket.reply || 'No reply text saved.'}</p>
-      </div>
-      <p className="tickets-hint">Replied {formatDate(ticket.repliedAt)}. Waiting on {otherName} to confirm it's solved.</p>
+        {error && <p className="tickets-error">{error}</p>}
 
-      {error && <p className="tickets-error">{error}</p>}
-
-      <div className="ticket-actions">
-        <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
-          Delete
-        </button>
+        <div className="ticket-actions">
+          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
+            Delete
+          </button>
+        </div>
       </div>
-    </article>
+    </details>
   );
 }
 
@@ -568,22 +607,17 @@ function HandledTicketCard({ ticket, onDelete }) {
   }
 
   return (
-    <details className="ticket-card ticket-card--handled">
-      <summary>
-        <div className="ticket-handled-summary">
-          <span className="ticket-handled-title">{ticket.title}</span>
-          <span className="tickets-status-pill">{ticket.status}</span>
-        </div>
-        <span className="tickets-hint">
-          #{ticket.id} · closed {formatDate(ticket.confirmedAt)}
-        </span>
-      </summary>
-      <div className="ticket-handled-content">
+    <details className="ticket-card ticket-card--collapsible ticket-card--handled">
+      <TicketSummary ticket={ticket} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+
         <TicketBody ticket={ticket} />
         <div className="ticket-locked-reply">
           <strong>Reply</strong>
           <p>{ticket.reply || 'No reply text saved.'}</p>
         </div>
+        <p className="tickets-hint">Closed {formatDate(ticket.confirmedAt)}.</p>
         {error && <p className="tickets-error">{error}</p>}
         <div className="ticket-actions">
           <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
@@ -597,20 +631,19 @@ function HandledTicketCard({ ticket, onDelete }) {
 
 function SentTicketCard({ ticket }) {
   return (
-    <article className="ticket-card ticket-card--sent">
-      <div className="ticket-card-top">
-        <div>
-          <h3>{ticket.title}</h3>
-          <TicketMeta ticket={ticket} />
-        </div>
-        <span className="tickets-status-pill">{ticket.status}</span>
+    <details className="ticket-card ticket-card--collapsible ticket-card--sent">
+      <TicketSummary ticket={ticket} />
+      <div className="ticket-details-content">
+        <TicketMeta ticket={ticket} />
+        {ticket.reply ? (
+          <div className="ticket-locked-reply">
+            <strong>Their reply</strong>
+            <p>{ticket.reply}</p>
+          </div>
+        ) : (
+          <p className="tickets-hint">No reply yet.</p>
+        )}
       </div>
-      {ticket.reply && (
-        <div className="ticket-locked-reply">
-          <strong>Their reply</strong>
-          <p>{ticket.reply}</p>
-        </div>
-      )}
-    </article>
+    </details>
   );
 }
