@@ -23,7 +23,7 @@ import * as sm from './resetRoomStateMachine.js';
 import { SESSION_STATUS, ROLES, DEFAULT_NAMES } from './resetRoomConstants.js';
 import { relayDiscordMessage } from './discordRelay.js';
 import { STATUS_OPTIONS, STATUS_USERS, formatStatusMessage } from '../src/lib/statusOptions.js';
-import { lookupWord, buildDefineEmbed } from './dictionaryLookup.js';
+import { lookupWord, buildDefineEmbed, SUPPORTED_LANGUAGES } from './dictionaryLookup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOVE_VEST_DIR = path.join(__dirname, 'assets', 'lovevest');
@@ -215,6 +215,13 @@ async function registerCommands(clientId, guildId, token) {
             type: ApplicationCommandOptionType.String,
             required: true,
           },
+          {
+            name: 'language',
+            description: 'Language of the word (defaults to English)',
+            type: ApplicationCommandOptionType.String,
+            required: false,
+            choices: Object.entries(SUPPORTED_LANGUAGES).map(([value, name]) => ({ name, value })),
+          },
         ],
       },
     ],
@@ -378,16 +385,17 @@ export function startDiscordBot() {
 
     if (interaction.commandName === 'define') {
       const word = interaction.options.getString('word', true);
+      const language = interaction.options.getString('language') ?? 'en';
       await interaction.deferReply(); // public reply — a lookup result is fine for both to see
       try {
-        const entries = await lookupWord(word);
+        const entries = await lookupWord(word, language);
         if (!entries) {
-          await interaction.editReply(`No definition found for **${word}**.`);
+          await interaction.editReply(`No definition found for **${word}** in ${SUPPORTED_LANGUAGES[language]}.`);
           return;
         }
-        await interaction.editReply({ embeds: [buildDefineEmbed(word, entries)] });
+        await interaction.editReply({ embeds: [buildDefineEmbed(word, language, entries)] });
       } catch (err) {
-        console.error(`[discord] /define failed for "${word}":`, err.message);
+        console.error(`[discord] /define failed for "${word}" (${language}):`, err.message);
         await interaction.editReply("Couldn't look that word up — try again in a bit.");
       }
       return;
