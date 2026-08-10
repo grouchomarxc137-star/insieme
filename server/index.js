@@ -32,7 +32,7 @@ import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
 import * as taskListsRepo from './taskListsRepo.js';
 import * as growthRepo from './growthRepo.js';
-import { FACTOR_CONFIG } from '../src/lib/growthModel.js';
+import { FACTOR_CONFIG, DAILY_CHECKIN_AWARD } from '../src/lib/growthModel.js';
 
 const CHECKIN_TYPES = ['daily', 'weekly'];
 
@@ -217,6 +217,13 @@ app.post('/api/checkins/:type', async (req, res) => {
       console.log(`[discord] check-in PDF sent for ${checkin.id}`);
     } catch (err) {
       console.log(`[discord] check-in PDF send failed for ${checkin.id}: ${err.message}`);
+    }
+
+    // Both submitting the daily check-in IS the two-sided confirmation the
+    // old manual quick log used to need — award the tree XP right here
+    // instead of waiting on a separate tap from each person.
+    if (type === 'daily') {
+      growthRepo.award({ ...DAILY_CHECKIN_AWARD, scope: 'shared', logId: checkin.id });
     }
   }
 

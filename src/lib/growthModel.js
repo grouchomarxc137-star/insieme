@@ -34,20 +34,16 @@ export const FACTOR_CONFIG = {
 };
 
 // Manual "this happened" buttons for the parts of the system that don't have
-// a real feature behind them yet (Check-in, Reset Room, Tickets). Never
-// disabled/locked — instead each one needs both Principe and Principessa to
+// a real feature behind them yet (Reset Room, Tickets). Never disabled/
+// locked — instead each one needs both Principe and Principessa to
 // separately confirm it before the XP actually lands (see
 // server/growthRepo.js confirmQuickLog).
+//
+// Check-in no longer has a manual entry here — it's a real, wired-up feature
+// (see DAILY_CHECKIN_AWARD below): both submitting their daily check-in IS
+// the two-sided confirmation, so the award fires automatically instead of
+// needing a separate quick-log tap on top of it.
 export const QUICK_LOGS = [
-  {
-    id: 'checkin',
-    icon: '🗓️',
-    label: 'We did a check-in',
-    factor: 'bees',
-    factorGain: 15,
-    xp: 20,
-    description: 'Log a real check-in conversation until Check-in is a wired-up feature.',
-  },
   {
     id: 'reset_room',
     icon: '🕊️',
@@ -67,6 +63,12 @@ export const QUICK_LOGS = [
     description: 'Something that was left unsaid got named and talked through.',
   },
 ];
+
+// Same xp/factor/factorGain the old manual "We did a check-in" quick log
+// used — awarded automatically now (see server/index.js's POST
+// /api/checkins/daily handler) the moment both people's daily check-in
+// completes, instead of needing a separate confirmation tap from each side.
+export const DAILY_CHECKIN_AWARD = { xp: 20, factor: 'bees', factorGain: 15 };
 
 // A true clean slate: water/sun/bees rise from actually doing real tasks, so
 // they start at 0 — nothing's been built yet. Air/toxicity track friction,

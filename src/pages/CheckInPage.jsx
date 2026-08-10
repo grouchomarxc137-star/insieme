@@ -54,7 +54,8 @@ export default function CheckInPage({ user }) {
           ) : hasSubmitted ? (
             <p className="checkin-note">
               Your answers for {checkin.periodLabel} are locked in. They'll stay hidden until {otherName} submits
-              too — then you'll both see everything at once, and a PDF gets sent to Discord.
+              too — then you'll both see everything at once, a PDF gets sent to Discord
+              {activeType === 'daily' ? ', and the tree gets its XP' : ''}.
             </p>
           ) : (
             <CheckinForm

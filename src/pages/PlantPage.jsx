@@ -107,7 +107,7 @@ export default function PlantPage({ user }) {
     <div className="page">
       <div className="page-header">
         <h1>Plant</h1>
-        <p>Water, Sun, and Bees grow from real tasks. Log a check-in, Reset Room, or resolved ticket below to move Air and Toxicity too.</p>
+        <p>Water, Sun, and Bees grow from real tasks. Bees also move when your daily check-in completes. Log a Reset Room or resolved ticket below to move Air and Toxicity too.</p>
       </div>
 
       <div className="scene-card">
