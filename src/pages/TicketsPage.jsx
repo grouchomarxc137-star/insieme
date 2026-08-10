@@ -179,7 +179,7 @@ function TicketsCounters({ tickets, user, otherName }) {
   const personalCount = countPersonalSolvedToday(tickets, user);
   return (
     <div className="tickets-counters">
-      <TicketCounterCard label={`Solved for ${otherName} today`} count={sharedCount} accent="shared" />
+      <TicketCounterCard label={`Solved with ${otherName} today`} count={sharedCount} accent="shared" />
       <TicketCounterCard label="Solved for yourself today" count={personalCount} accent="personal" />
     </div>
   );
