@@ -16,12 +16,14 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  ApplicationCommandOptionType,
 } from 'discord.js';
 import * as repo from './resetRoomRepo.js';
 import * as sm from './resetRoomStateMachine.js';
 import { SESSION_STATUS, ROLES, DEFAULT_NAMES } from './resetRoomConstants.js';
 import { relayDiscordMessage } from './discordRelay.js';
 import { STATUS_OPTIONS, STATUS_USERS, formatStatusMessage } from '../src/lib/statusOptions.js';
+import { lookupWord, buildDefineEmbed } from './dictionaryLookup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOVE_VEST_DIR = path.join(__dirname, 'assets', 'lovevest');
@@ -203,6 +205,18 @@ async function registerCommands(clientId, guildId, token) {
         name: 'clearchannel',
         description: 'Delete every message in this channel (asks for confirmation first)',
       },
+      {
+        name: 'define',
+        description: 'Look up the definition of a word',
+        options: [
+          {
+            name: 'word',
+            description: 'The word to define',
+            type: ApplicationCommandOptionType.String,
+            required: true,
+          },
+        ],
+      },
     ],
   });
 }
@@ -229,7 +243,7 @@ export function startDiscordBot() {
     console.log(`[discord] bot logged in as ${client.user.tag}`);
     try {
       await registerCommands(clientId, guildId, botToken);
-      console.log('[discord] registered /triggered, /cancel, /lovevest, /clearchannel commands');
+      console.log('[discord] registered /triggered, /cancel, /lovevest, /clearchannel, /define commands');
     } catch (err) {
       console.error('[discord] failed to register commands:', err.message);
     }
@@ -358,6 +372,23 @@ export function startDiscordBot() {
       } catch (err) {
         console.error('[discord] clearchannel failed:', err.message);
         await interaction.editReply({ content: `Something went wrong: ${err.message}` });
+      }
+      return;
+    }
+
+    if (interaction.commandName === 'define') {
+      const word = interaction.options.getString('word', true);
+      await interaction.deferReply(); // public reply — a lookup result is fine for both to see
+      try {
+        const entries = await lookupWord(word);
+        if (!entries) {
+          await interaction.editReply(`No definition found for **${word}**.`);
+          return;
+        }
+        await interaction.editReply({ embeds: [buildDefineEmbed(word, entries)] });
+      } catch (err) {
+        console.error(`[discord] /define failed for "${word}":`, err.message);
+        await interaction.editReply("Couldn't look that word up — try again in a bit.");
       }
       return;
     }
