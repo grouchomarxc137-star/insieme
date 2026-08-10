@@ -15,11 +15,37 @@ const MAX_DEFINITIONS_PER_MEANING = 2;
 // Returns the parsed entries array on success, null if the word has no entry
 // (404 — the API's documented "not found" response), or throws for any other
 // failure so the caller can tell "not found" apart from "something broke".
+//
+// The free API is backed by a serverless function that intermittently throws
+// transient 502/503/504s even for perfectly valid words (confirmed by hand —
+// the same word succeeds seconds later with no code change), so those get a
+// couple of quick retries before giving up. 404 is never retried since it's
+// the API's real "no entry for this word" answer, not a hiccup.
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 400;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function lookupWord(word) {
-  const res = await fetch(`${API_BASE}/${encodeURIComponent(word)}`);
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`dictionary API returned ${res.status}`);
-  return res.json();
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/${encodeURIComponent(word)}`);
+    } catch (err) {
+      lastErr = err; // network error — worth retrying too
+      if (attempt < MAX_ATTEMPTS) await wait(RETRY_DELAY_MS * attempt);
+      continue;
+    }
+    if (res.status === 404) return null;
+    if (res.ok) return res.json();
+
+    lastErr = new Error(`dictionary API returned ${res.status}`);
+    if (!TRANSIENT_STATUSES.has(res.status)) throw lastErr; // real error, don't retry
+    if (attempt < MAX_ATTEMPTS) await wait(RETRY_DELAY_MS * attempt);
+  }
+  throw lastErr;
 }
 
 function firstPhonetic(entries) {
