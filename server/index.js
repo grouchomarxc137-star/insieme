@@ -29,7 +29,7 @@ import { startDiscordBot, setStatusNickname } from './resetRoomDiscordBot.js';
 import { relayDiscordMessage } from './discordRelay.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
-import { ACCOUNT_ROLES } from '../src/lib/tickets.js';
+import { ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
 import * as taskListsRepo from './taskListsRepo.js';
 import * as growthRepo from './growthRepo.js';
 import { FACTOR_CONFIG } from '../src/lib/growthModel.js';
@@ -242,17 +242,20 @@ function reportTicketNotifyFailure(action) {
 }
 
 app.get('/api/tickets', (req, res) => {
-  res.json({ tickets: ticketsRepo.listTickets() });
+  res.json({ tickets: ticketsRepo.listTicketsForViewer(req.query.viewer) });
 });
 
 app.post('/api/tickets', (req, res) => {
-  const { title, category, priority, replyStyle, mood, message, need, createdBy } = req.body || {};
+  const { title, category, priority, replyStyle, mood, message, need, createdBy, scope } = req.body || {};
   if (!title || !message || !ACCOUNT_ROLES.includes(createdBy)) {
     res.status(400).json({ error: 'Missing required ticket fields.' });
     return;
   }
-  const ticket = ticketsRepo.createTicket({ title, category, priority, replyStyle, mood, message, need, createdBy });
-  notifyTicketEvent(ticket, 'create_ticket').catch(reportTicketNotifyFailure('create_ticket'));
+  const ticket = ticketsRepo.createTicket({ title, category, priority, replyStyle, mood, message, need, createdBy, scope });
+  // Personal tickets are private and never post to Discord.
+  if (ticket.scope !== TICKET_SCOPE.PERSONAL) {
+    notifyTicketEvent(ticket, 'create_ticket').catch(reportTicketNotifyFailure('create_ticket'));
+  }
   res.status(201).json({ ticket });
 });
 
@@ -267,7 +270,9 @@ app.patch('/api/tickets/:id', (req, res) => {
     res.status(400).json({ error: result.error });
     return;
   }
-  notifyTicketEvent(result.ticket, action).catch(reportTicketNotifyFailure(action));
+  if (result.ticket.scope !== TICKET_SCOPE.PERSONAL) {
+    notifyTicketEvent(result.ticket, action).catch(reportTicketNotifyFailure(action));
+  }
   res.json({ ticket: result.ticket });
 });
 
@@ -278,7 +283,9 @@ app.delete('/api/tickets/:id', (req, res) => {
     return;
   }
   ticketsRepo.deleteTicket(req.params.id);
-  notifyTicketEvent(ticket, 'delete_ticket').catch(reportTicketNotifyFailure('delete_ticket'));
+  if (ticket.scope !== TICKET_SCOPE.PERSONAL) {
+    notifyTicketEvent(ticket, 'delete_ticket').catch(reportTicketNotifyFailure('delete_ticket'));
+  }
   res.json({ ok: true });
 });
 

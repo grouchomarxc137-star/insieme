@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 
 const POLL_MS = 15000;
 
-export function useTickets() {
+// user is the viewer identity, sent as a query param so the server can keep
+// each account's personal tickets private instead of just hiding them
+// client-side (see ticketsRepo.listTicketsForViewer).
+export function useTickets(user) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch('/api/tickets');
+      const response = await fetch(`/api/tickets?viewer=${encodeURIComponent(user || '')}`);
       if (!response.ok) throw new Error('Could not load tickets.');
       const data = await response.json();
       setTickets(data.tickets);
@@ -19,7 +22,7 @@ export function useTickets() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     refresh();

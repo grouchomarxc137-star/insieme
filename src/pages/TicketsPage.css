@@ -153,10 +153,52 @@
   font-size: 14px;
 }
 
+/* Groups everything under one scope (shared vs. personal) into a visibly
+   distinct region — a colored top border plus its own surface, so the two
+   halves of the page read as separate places rather than one long list. */
+.tickets-scope-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 6px solid var(--lavender-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.tickets-scope-section--shared {
+  border-top-color: var(--gold-strong);
+}
+
+.tickets-scope-section--personal {
+  border-top-color: var(--mint-strong);
+  background: color-mix(in srgb, var(--mint) 22%, var(--surface));
+}
+
+.tickets-scope-header h2.tickets-scope-title {
+  margin: 0 0 2px;
+  font-size: 19px;
+}
+
+.tickets-scope-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Each section is its own tinted, bordered card so an empty one still reads
+   as "a place with nothing in it yet" instead of a floating paragraph. */
 .tickets-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
 }
 
 .tickets-section-header {
@@ -178,7 +220,7 @@
 }
 
 .tickets-count-pill {
-  background: var(--surface-alt);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 12px;
@@ -190,6 +232,11 @@
 
 .tickets-empty {
   margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: center;
   font-size: 13px;
   color: var(--text-muted);
   font-style: italic;
@@ -223,6 +270,10 @@
 }
 
 .ticket-card--handled {
+  border-top-color: var(--mint-strong);
+}
+
+.ticket-card--personal {
   border-top-color: var(--mint-strong);
 }
 
@@ -405,7 +456,116 @@ details[open] > .ticket-summary .ticket-summary-chevron {
   color: var(--text);
 }
 
+.tickets-btn--personal {
+  background: var(--mint);
+  border-color: var(--mint-strong);
+  color: #2f4a24;
+}
+
+.tickets-btn--personal:hover:not(:disabled) {
+  background: var(--mint-strong);
+}
+
 .tickets-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.tickets-open-btn--personal {
+  border-top-color: var(--mint-strong);
+}
+
+.tickets-form--personal {
+  border-top-color: var(--mint-strong);
+}
+
+.tickets-submit-btn--personal {
+  background: var(--mint);
+  border-color: var(--mint-strong);
+  color: #2f4a24;
+}
+
+.tickets-submit-btn--personal:hover:not(:disabled) {
+  background: var(--mint-strong);
+}
+
+/* "Solved today" counters — two cards, one per scope, each with its own
+   tier badge and progress-to-next-tier bar. Sits above both sections so
+   it's the first thing you see when the page loads. */
+.tickets-counters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 480px) {
+  .tickets-counters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tickets-counter-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--gold-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+  text-align: center;
+}
+
+.tickets-counter-card--personal {
+  border-top-color: var(--mint-strong);
+}
+
+.tickets-counter-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.tickets-counter-count {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.tickets-counter-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.tickets-counter-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.tickets-counter-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gold-strong);
+  transition: width 0.25s ease;
+}
+
+.tickets-counter-card--personal .tickets-counter-bar-fill {
+  background: var(--mint-strong);
+}
+
+.tickets-counter-next {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }

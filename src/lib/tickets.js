@@ -7,9 +7,24 @@ export const TICKET_STATUS = {
   AWAITING: 'Awaiting confirmation 💛',
   VALIDATED: 'Confirmed solved 🌟',
   HANDLED: 'Handled ✅',
+  // Personal-scope only: no partner to receive/reply, so tickets just sit
+  // open until the owner solves them directly (see solve_personal_ticket).
+  OPEN: 'Open 📝',
 };
 
 export const OPEN_STATUSES = [TICKET_STATUS.RECEIVED, TICKET_STATUS.READING, TICKET_STATUS.DEBUGGING];
+
+// 'shared' is the original Principe<->Principessa workflow (posts to
+// Discord). 'personal' is self-assigned — a private task/note with no reply
+// or confirmation step, solved with one click, never touches Discord.
+export const TICKET_SCOPE = {
+  SHARED: 'shared',
+  PERSONAL: 'personal',
+};
+
+export function isPersonalTicket(ticket) {
+  return ticket.scope === TICKET_SCOPE.PERSONAL;
+}
 
 // Matches insieme's login casing ('Principe'/'Principessa'), not lovissimi's
 // lowercase account roles — the ticket's `createdBy` is just the logged-in user.
@@ -67,6 +82,7 @@ export function otherAccount(role) {
 // other person closes it. Returns null once handled — there's no one left
 // to act on it.
 export function ticketWaitingOn(ticket) {
+  if (isPersonalTicket(ticket)) return null; // no one else's turn on a personal ticket
   switch (ticket.status) {
     case TICKET_STATUS.AWAITING:
       return ticket.createdBy;

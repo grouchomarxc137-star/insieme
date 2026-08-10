@@ -1,7 +1,7 @@
 // Ported from personal/lovissimi's server/tickets/repo.js, adapted to
 // insieme's shared db.js and Principe/Principessa casing.
 import db from './db.js';
-import { TICKET_STATUS, OPEN_STATUSES, ACCOUNT_ROLES } from '../src/lib/tickets.js';
+import { TICKET_STATUS, OPEN_STATUSES, ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
 
 const now = () => new Date().toISOString();
 
@@ -35,27 +35,33 @@ function ticketFromRow(row) {
     validatedAt: row.validated_at || '',
     confirmedAt: row.confirmed_at || '',
     discordMessageId: row.discord_message_id || '',
+    scope: row.scope || TICKET_SCOPE.SHARED,
   };
 }
 
-export function createTicket({ title, category, priority, replyStyle, mood, message, need, createdBy }) {
+export function createTicket({ title, category, priority, replyStyle, mood, message, need, createdBy, scope }) {
   const role = ACCOUNT_ROLES.includes(createdBy) ? createdBy : ACCOUNT_ROLES[0];
   const id = makeTicketId(role);
+  const ticketScope = scope === TICKET_SCOPE.PERSONAL ? TICKET_SCOPE.PERSONAL : TICKET_SCOPE.SHARED;
+  // Personal tickets have no one to receive them — they just start open,
+  // waiting on their own creator to solve them.
+  const initialStatus = ticketScope === TICKET_SCOPE.PERSONAL ? TICKET_STATUS.OPEN : TICKET_STATUS.RECEIVED;
   const timestamp = now();
   db.prepare(
-    `INSERT INTO tickets (id, title, category, priority, reply_style, mood, message, need, created_by, status, reply, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`
+    `INSERT INTO tickets (id, title, category, priority, reply_style, mood, message, need, created_by, status, reply, scope, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?)`
   ).run(
     id,
     title,
     category || 'Just expressing',
     priority || 'P5 - tiny feeling',
-    replyStyle || 'Soft and sweet',
+    replyStyle || (ticketScope === TICKET_SCOPE.PERSONAL ? '' : 'Soft and sweet'),
     clampMood(mood),
     message,
     need || '',
     role,
-    TICKET_STATUS.RECEIVED,
+    initialStatus,
+    ticketScope,
     timestamp,
     timestamp
   );
@@ -68,6 +74,20 @@ export function getTicket(id) {
 
 export function listTickets() {
   return db.prepare(`SELECT * FROM tickets ORDER BY updated_at DESC`).all().map(ticketFromRow);
+}
+
+// Personal tickets are private to whoever created them — everything else
+// (all shared tickets) is visible to both accounts, same as before. An
+// unrecognized/missing viewer only gets shared tickets, never a stray
+// personal one.
+export function listTicketsForViewer(viewer) {
+  if (!ACCOUNT_ROLES.includes(viewer)) {
+    return listTickets().filter((t) => t.scope !== TICKET_SCOPE.PERSONAL);
+  }
+  return db
+    .prepare(`SELECT * FROM tickets WHERE scope != 'personal' OR created_by = ? ORDER BY updated_at DESC`)
+    .all(viewer)
+    .map(ticketFromRow);
 }
 
 function persist(ticket, changes) {
@@ -149,6 +169,25 @@ export function applyTicketAction(id, { actor, action, status, reply }) {
       if (ticket.status !== TICKET_STATUS.VALIDATED) return { error: 'This ticket must be confirmed solved before closing.' };
       return {
         ticket: persist(ticket, { status: TICKET_STATUS.HANDLED, confirmedAt: timestamp, updatedAt: timestamp }),
+      };
+    }
+    // Personal tickets skip the whole receive/reply/validate handshake —
+    // there's no one else to do those steps, so the owner solves (or
+    // reopens) their own ticket directly.
+    case 'solve_personal_ticket': {
+      if (ticket.scope !== TICKET_SCOPE.PERSONAL) return { error: 'Not a personal ticket.' };
+      if (!isCreator) return { error: 'Only the ticket owner can solve their own ticket.' };
+      if (ticket.status === TICKET_STATUS.HANDLED) return { error: 'This ticket is already solved.' };
+      return {
+        ticket: persist(ticket, { status: TICKET_STATUS.HANDLED, confirmedAt: timestamp, updatedAt: timestamp }),
+      };
+    }
+    case 'reopen_personal_ticket': {
+      if (ticket.scope !== TICKET_SCOPE.PERSONAL) return { error: 'Not a personal ticket.' };
+      if (!isCreator) return { error: 'Only the ticket owner can reopen this.' };
+      if (ticket.status !== TICKET_STATUS.HANDLED) return { error: 'This ticket is not solved yet.' };
+      return {
+        ticket: persist(ticket, { status: TICKET_STATUS.OPEN, confirmedAt: '', updatedAt: timestamp }),
       };
     }
     default:

@@ -170,6 +170,13 @@ if (!ticketColumns.includes('validated_at')) {
 if (!ticketColumns.includes('discord_message_id')) {
   db.exec(`ALTER TABLE tickets ADD COLUMN discord_message_id TEXT`);
 }
+// 'shared' (the original Principe<->Principessa workflow, Discord-notified)
+// or 'personal' (self-assigned, single-click solve, never touches Discord).
+// Defaults every existing row to 'shared' so old tickets keep behaving
+// exactly as before.
+if (!ticketColumns.includes('scope')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN scope TEXT NOT NULL DEFAULT 'shared'`);
+}
 
 // Backs discordRelay.js's "delete the previous message for this key, then
 // post a new one" dedup (used by the website's Status/Emergency Mood panels
