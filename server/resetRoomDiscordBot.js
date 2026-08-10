@@ -21,8 +21,14 @@ import {
 import * as repo from './resetRoomRepo.js';
 import * as sm from './resetRoomStateMachine.js';
 import { SESSION_STATUS, ROLES, DEFAULT_NAMES } from './resetRoomConstants.js';
-import { relayDiscordMessage } from './discordRelay.js';
-import { STATUS_OPTIONS, STATUS_USERS, formatStatusMessage } from '../src/lib/statusOptions.js';
+import { relayDiscordMessage, clearDiscordMessage } from './discordRelay.js';
+import {
+  STATUS_OPTIONS,
+  STATUS_USERS,
+  formatStatusMessage,
+  EMERGENCY_MOOD_OPTIONS,
+  formatEmergencyMessage,
+} from '../src/lib/statusOptions.js';
 import { lookupWord, buildDefineEmbed, SUPPORTED_LANGUAGES } from './dictionaryLookup.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +56,13 @@ const STATUS_USER_IDS = {
 // customId format for the persistent mood buttons: "status:<user>:<optionId>",
 // e.g. "status:Principe:locked-in".
 const STATUS_BUTTON_PREFIX = 'status';
+
+// customId format for the persistent emergency-mood buttons:
+// "emergency:<user>:<optionId>", e.g. "emergency:Principe:overwhelmed", plus
+// one special optionId "cancel" (e.g. "emergency:Principe:cancel") for the
+// button that clears it instead of setting a mood.
+const EMERGENCY_BUTTON_PREFIX = 'emergency';
+const EMERGENCY_CANCEL_ID = 'cancel';
 
 // All mood buttons stay the same neutral gray (Discord's "Secondary" style) —
 // the person's identity comes from the embed accent color instead, not the
@@ -123,6 +136,41 @@ function isStatusMenuFor(message, user) {
   return message.components?.some((row) => row.components?.some((c) => c.customId?.startsWith(prefix)));
 }
 
+function chunk(array, size) {
+  const out = [];
+  for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
+  return out;
+}
+
+// Discord caps an ActionRow at 5 buttons, and EMERGENCY_MOOD_OPTIONS has 6,
+// so the mood buttons spill onto a second row; Cancel always gets its own
+// row at the end so it reads as a separate, deliberate action rather than
+// one more mood to pick.
+function buildEmergencyMenuRows(user) {
+  const moodRows = chunk(EMERGENCY_MOOD_OPTIONS, 5).map((group) =>
+    new ActionRowBuilder().addComponents(
+      group.map((option) =>
+        new ButtonBuilder()
+          .setCustomId(`${EMERGENCY_BUTTON_PREFIX}:${user}:${option.id}`)
+          .setLabel(option.label)
+          .setStyle(STATUS_BUTTON_STYLE)
+      )
+    )
+  );
+  const cancelRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${EMERGENCY_BUTTON_PREFIX}:${user}:${EMERGENCY_CANCEL_ID}`)
+      .setLabel('Cancel')
+      .setStyle(ButtonStyle.Danger)
+  );
+  return [...moodRows, cancelRow];
+}
+
+function isEmergencyMenuFor(message, user) {
+  const prefix = `${EMERGENCY_BUTTON_PREFIX}:${user}:`;
+  return message.components?.some((row) => row.components?.some((c) => c.customId?.startsWith(prefix)));
+}
+
 // Finds this person's existing mood-menu message in the status channel (so a
 // bot restart reuses it instead of posting a duplicate), or creates it the
 // first time. Menus are never reposted after that — only the live status
@@ -157,6 +205,32 @@ async function ensureStatusMenu(channel, user) {
   }
 }
 
+// Same pinned-control-panel treatment as ensureStatusMenu, one below the
+// other for the same person (see ensureStatusMenus).
+async function ensureEmergencyMenu(channel, user) {
+  const recent = await channel.messages.fetch({ limit: 50 });
+  let message = recent.find((m) => m.author.id === client.user.id && isEmergencyMenuFor(m, user));
+
+  const embed = new EmbedBuilder()
+    .setColor(STATUS_MENU_COLOR[user] ?? null)
+    .setDescription(`**${user}** — emergency mood: adds an emoji next to your status. Cancel clears it.`);
+
+  if (!message) {
+    message = await channel.send({ embeds: [embed], components: buildEmergencyMenuRows(user) });
+    console.log(`[discord] created emergency menu for ${user}: ${message.id}`);
+  } else {
+    await message.edit({ content: '', embeds: [embed], components: buildEmergencyMenuRows(user) });
+  }
+
+  if (!message.pinned) {
+    try {
+      await message.pin();
+    } catch (err) {
+      console.log(`[discord] couldn't pin ${user} emergency menu: ${err.message}`);
+    }
+  }
+}
+
 async function ensureStatusMenus() {
   const channelId = process.env.DISCORD_STATUS_CHANNEL_ID;
   if (!channelId) {
@@ -165,8 +239,30 @@ async function ensureStatusMenus() {
   }
   try {
     const channel = await client.channels.fetch(channelId);
+
+    // One-time reorder: the first time an emergency menu is being created
+    // for either person, wipe any already-existing status menus first so
+    // everything below gets recreated fresh in the interleaved order (each
+    // person's status menu immediately followed by their emergency menu)
+    // instead of both emergency menus landing after both old status ones.
+    // After this run every menu already exists, so it never fires again —
+    // future restarts just edit menus in place, same as before.
+    const recent = await channel.messages.fetch({ limit: 50 });
+    const hasAnyEmergencyMenu = STATUS_USERS.some((user) =>
+      recent.some((m) => m.author.id === client.user.id && isEmergencyMenuFor(m, user))
+    );
+    if (!hasAnyEmergencyMenu) {
+      const oldStatusMenus = recent.filter(
+        (m) => m.author.id === client.user.id && STATUS_USERS.some((user) => isStatusMenuFor(m, user))
+      );
+      for (const message of oldStatusMenus.values()) {
+        await message.delete().catch(() => {});
+      }
+    }
+
     for (const user of STATUS_USERS) {
       await ensureStatusMenu(channel, user);
+      await ensureEmergencyMenu(channel, user);
     }
   } catch (err) {
     console.error('[discord] failed to set up status menus:', err.message);
@@ -183,6 +279,25 @@ async function postStatusFromMenu(user, option) {
   if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not configured on the server.');
   await relayDiscordMessage({ webhookUrl, content: formatStatusMessage(user, option), key: `${user}-status` });
   await setStatusNickname(user, option.emoji);
+}
+
+// Same idea as postStatusFromMenu, but for the Emergency Mood panel: the
+// live emergency message replaces any previous one under its own dedup key,
+// and the emoji is added next to (not instead of) the status emoji.
+async function postEmergencyFromMenu(user, option) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not configured on the server.');
+  await relayDiscordMessage({ webhookUrl, content: formatEmergencyMessage(user, option), key: `${user}-emergency` });
+  await setEmergencyNickname(user, option.emoji);
+}
+
+// The "Cancel" button: retracts the live emergency message (nothing new to
+// post) and drops the emergency emoji from the nickname.
+async function cancelEmergencyFromMenu(user) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error('DISCORD_WEBHOOK_URL is not configured on the server.');
+  await clearDiscordMessage({ webhookUrl, key: `${user}-emergency` });
+  await clearEmergencyNickname(user);
 }
 
 async function registerCommands(clientId, guildId, token) {
@@ -254,6 +369,7 @@ export function startDiscordBot() {
     } catch (err) {
       console.error('[discord] failed to register commands:', err.message);
     }
+    await initNicknameState();
     await ensureStatusMenus();
   });
 
@@ -293,6 +409,32 @@ export function startDiscordBot() {
       } catch (err) {
         console.error(`[discord] status menu update failed for ${statusUser}:`, err.message);
         await interaction.editReply("Couldn't update the status — try again.");
+      }
+      return;
+    }
+
+    // Emergency-mood buttons from the persistent emergency menus — same
+    // shape as the status buttons above, plus the one special "cancel"
+    // optionId that clears the mood instead of setting one.
+    if (interaction.isButton() && interaction.customId.startsWith(`${EMERGENCY_BUTTON_PREFIX}:`)) {
+      if (interaction.guildId !== guildId) return;
+
+      const [, emergencyUser, optionId] = interaction.customId.split(':');
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      try {
+        if (optionId === EMERGENCY_CANCEL_ID) {
+          await cancelEmergencyFromMenu(emergencyUser);
+          await interaction.editReply(`${emergencyUser}'s emergency mood was cleared.`);
+        } else {
+          const option = EMERGENCY_MOOD_OPTIONS.find((o) => o.id === optionId);
+          if (!option) return;
+          await postEmergencyFromMenu(emergencyUser, option);
+          await interaction.editReply(`${emergencyUser} flagged: ${option.label}`);
+        }
+      } catch (err) {
+        console.error(`[discord] emergency menu update failed for ${emergencyUser}:`, err.message);
+        await interaction.editReply("Couldn't update the emergency mood — try again.");
       }
       return;
     }
@@ -430,12 +572,24 @@ export function unlockAfterSession(sessionId) {
   console.log(`[discord] session ${sessionId} finished, reset protocol ended`);
 }
 
-// Renames whichever of you picked a new status to "<name> <emoji>" — e.g.
-// "Principe 🔒". Swallows every failure (bot not logged in, IDs not
+// Per-user nickname emoji state: the status emoji and the emergency-mood
+// emoji are tracked separately so setting one never clobbers the other —
+// the nickname is always "<name> <statusEmoji><emergencyEmoji>" with the
+// emergency part just omitted when there isn't one. In-memory only (same
+// tradeoff as `lockState` above), which is why initNicknameState() below
+// re-derives it from Discord's own record (the current nickname) on every
+// bot login instead of assuming a restart remembers anything.
+const nicknameState = {
+  Principe: { statusEmoji: null, emergencyEmoji: null },
+  Principessa: { statusEmoji: null, emergencyEmoji: null },
+};
+
+// Rebuilds "<name> <statusEmoji><emergencyEmoji>" from nicknameState and
+// pushes it to Discord. Swallows every failure (bot not logged in, IDs not
 // configured, bot's role sitting below yours, or you being the server owner
-// which Discord blocks unconditionally) so a status post never fails just
+// which Discord blocks unconditionally) so a mood post never fails just
 // because the nickname half of it couldn't go through.
-export async function setStatusNickname(user, emoji) {
+async function applyNickname(user) {
   if (!client || !client.isReady()) {
     console.log(`[discord] skipping nickname sync for ${user}: bot not ready`);
     return;
@@ -447,12 +601,83 @@ export async function setStatusNickname(user, emoji) {
     return;
   }
 
+  const { statusEmoji, emergencyEmoji } = nicknameState[user];
+  const suffix = `${statusEmoji || ''}${emergencyEmoji || ''}`;
+  const nickname = suffix ? `${user} ${suffix}` : user;
+
   try {
     const guild = await client.guilds.fetch(guildId);
     const member = await guild.members.fetch(userId);
-    await member.setNickname(`${user} ${emoji}`);
+    await member.setNickname(nickname);
     console.log(`[discord] nickname synced for ${user}: now "${member.nickname}"`);
   } catch (err) {
     console.error(`[discord] failed to set nickname for ${user}:`, err.message);
+  }
+}
+
+// Full status change — same effect as before this emoji was allowed to
+// share the nickname with an emergency mood: replaces the status half only.
+export async function setStatusNickname(user, emoji) {
+  if (!nicknameState[user]) return;
+  nicknameState[user].statusEmoji = emoji;
+  await applyNickname(user);
+}
+
+// Adds/replaces the emergency-mood emoji alongside whatever status emoji is
+// already there.
+export async function setEmergencyNickname(user, emoji) {
+  if (!nicknameState[user]) return;
+  nicknameState[user].emergencyEmoji = emoji;
+  await applyNickname(user);
+}
+
+// The "Cancel" action: drops just the emergency emoji, leaving the status
+// emoji (if any) untouched.
+export async function clearEmergencyNickname(user) {
+  if (!nicknameState[user] || nicknameState[user].emergencyEmoji === null) return;
+  nicknameState[user].emergencyEmoji = null;
+  await applyNickname(user);
+}
+
+// Reverses applyNickname's "<name> <statusEmoji><emergencyEmoji>" format
+// against a set of known emojis, so a restart can recover which mood(s)
+// were active instead of forgetting them (nicknameState itself doesn't
+// survive a restart). Only recognizes an exact status-then-emergency emoji
+// combination — anything else (nickname set by hand, or from before this
+// feature existed) is left as "nothing active" rather than guessed at.
+function parseNicknameSuffix(user, nickname) {
+  const empty = { statusEmoji: null, emergencyEmoji: null };
+  const prefix = `${user} `;
+  if (!nickname || !nickname.startsWith(prefix)) return empty;
+  const suffix = nickname.slice(prefix.length);
+  if (!suffix) return empty;
+
+  for (const statusOption of STATUS_OPTIONS) {
+    if (!suffix.startsWith(statusOption.emoji)) continue;
+    const rest = suffix.slice(statusOption.emoji.length);
+    if (!rest) return { statusEmoji: statusOption.emoji, emergencyEmoji: null };
+    const emergencyOption = EMERGENCY_MOOD_OPTIONS.find((o) => o.emoji === rest);
+    if (emergencyOption) return { statusEmoji: statusOption.emoji, emergencyEmoji: emergencyOption.emoji };
+  }
+  return empty;
+}
+
+// Called once at bot login, before any menu is touched, so a mood change
+// right after a restart composes onto the real current nickname instead of
+// onto blank in-memory state.
+async function initNicknameState() {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  if (!guildId) return;
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    for (const user of STATUS_USERS) {
+      const userId = STATUS_USER_IDS[user];
+      if (!userId) continue;
+      const member = await guild.members.fetch(userId).catch(() => null);
+      if (!member) continue;
+      nicknameState[user] = parseNicknameSuffix(user, member.nickname);
+    }
+  } catch (err) {
+    console.error('[discord] failed to init nickname state:', err.message);
   }
 }

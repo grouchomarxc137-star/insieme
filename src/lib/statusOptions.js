@@ -37,3 +37,26 @@ export const STATUS_USERS = ['Principe', 'Principessa'];
 export function formatStatusMessage(user, option) {
   return `**${user}** status: ${option.label}`;
 }
+
+// The Emergency Mood options — same sharing arrangement as STATUS_OPTIONS
+// above: one definition used by both the website's Emergency Mood panel and
+// the Discord bot's persistent emergency menu. Unlike status, an emergency
+// mood doesn't replace the status emoji on the nickname — it's added right
+// next to it, and "Cancel" (handled separately, not as an option here)
+// removes just that addition.
+export const EMERGENCY_MOOD_OPTIONS = [
+  { id: 'overwhelmed', emoji: '😩', label: '😩 Overwhelmed' },
+  { id: 'overstimulated', emoji: '🌪️', label: '🌪️ Overstimulated' },
+  { id: 'anxious', emoji: '😰', label: '😰 Anxious' },
+  { id: 'sad', emoji: '😢', label: '😢 Sad' },
+  { id: 'need-bestfriend', emoji: '🫂', label: '🫂 Need my bestfriend' },
+  { id: 'need-affection', emoji: '🥺', label: '🥺 Need affection' },
+];
+
+// Same wording the website's DiscordSendPanel builds for the Emergency Mood
+// panel (messageLabel="emergency") — kept in sync with formatStatusMessage
+// above so the in-Discord emergency menu posts byte-for-byte the same
+// content as the website.
+export function formatEmergencyMessage(user, option) {
+  return `**${user}** emergency: ${option.label}`;
+}

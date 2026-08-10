@@ -73,3 +73,24 @@ export function relayDiscordMessage({ webhookUrl, content, key }) {
   if (!key) return relayDiscordMessageNow({ webhookUrl, content, key });
   return runQueued(key, () => relayDiscordMessageNow({ webhookUrl, content, key }));
 }
+
+// Deletes the tracked message for a key without posting a replacement —
+// used by the Emergency Mood "Cancel" action, which has nothing new to say,
+// it's just retracting the last one. Queued on the same per-key chain as
+// relayDiscordMessage so a cancel can't race a near-simultaneous mood post
+// for the same key.
+async function clearDiscordMessageNow({ webhookUrl, key }) {
+  const row = getMessageId.get(key);
+  if (!row) return;
+  try {
+    const deleteResponse = await fetch(`${webhookUrl}/messages/${row.message_id}`, { method: 'DELETE' });
+    console.log(`[discord] delete ${row.message_id} for key "${key}" (cancel): ${deleteResponse.status}`);
+  } catch (err) {
+    console.log(`[discord] delete ${row.message_id} for key "${key}" (cancel) failed: ${err.message}`);
+  }
+  deleteMessageId.run(key);
+}
+
+export function clearDiscordMessage({ webhookUrl, key }) {
+  return runQueued(key, () => clearDiscordMessageNow({ webhookUrl, key }));
+}

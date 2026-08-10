@@ -25,8 +25,8 @@ import { buildMonthlyHeatmapPdf } from './monthlyHeatmapPdf.js';
 import * as resetRoomRepo from './resetRoomRepo.js';
 import { decorateState } from './resetRoomStateMachine.js';
 import { registerSocketHandlers } from './resetRoomSocket.js';
-import { startDiscordBot, setStatusNickname } from './resetRoomDiscordBot.js';
-import { relayDiscordMessage } from './discordRelay.js';
+import { startDiscordBot, setStatusNickname, setEmergencyNickname, clearEmergencyNickname } from './resetRoomDiscordBot.js';
+import { relayDiscordMessage, clearDiscordMessage } from './discordRelay.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
@@ -56,7 +56,7 @@ app.post('/api/discord-message', async (req, res) => {
     return;
   }
 
-  const { content, key, user, emoji } = req.body || {};
+  const { content, key, user, emoji, emojiKind } = req.body || {};
   if (!content || typeof content !== 'string') {
     res.status(400).json({ error: 'content is required.' });
     return;
@@ -65,12 +65,45 @@ app.post('/api/discord-message', async (req, res) => {
   try {
     await relayDiscordMessage({ webhookUrl, content, key });
 
-    // Status updates (not Emergency Mood) also carry `emoji`, which is the
-    // signal to sync it onto the sender's server nickname.
+    // Status/Emergency Mood updates also carry `emoji` + `emojiKind`, which
+    // is the signal to sync it onto the sender's server nickname. `status`
+    // replaces the status half of the nickname; `emergency` adds/replaces
+    // the emergency half alongside whatever status emoji is already there.
     if (user && emoji) {
-      await setStatusNickname(user, emoji);
+      if (emojiKind === 'emergency') {
+        await setEmergencyNickname(user, emoji);
+      } else {
+        await setStatusNickname(user, emoji);
+      }
     }
 
+    res.status(204).end();
+  } catch (err) {
+    res.status(502).json({ error: `Could not reach Discord: ${err.message}` });
+  }
+});
+
+// Emergency Mood's "Cancel": retracts the live emergency message (nothing
+// new to post, unlike the rest of this route) and drops the emergency emoji
+// from the nickname, leaving the status emoji untouched. Same behavior as
+// the "Cancel" button in the in-Discord emergency menu
+// (server/resetRoomDiscordBot.js) — either surface clears the other's view.
+app.post('/api/emergency-mood/cancel', async (req, res) => {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) {
+    res.status(500).json({ error: 'DISCORD_WEBHOOK_URL is not configured on the server.' });
+    return;
+  }
+
+  const { user } = req.body || {};
+  if (!PARTICIPANTS.includes(user)) {
+    res.status(400).json({ error: 'user must be Principe or Principessa.' });
+    return;
+  }
+
+  try {
+    await clearDiscordMessage({ webhookUrl, key: `${user}-emergency` });
+    await clearEmergencyNickname(user);
     res.status(204).end();
   } catch (err) {
     res.status(502).json({ error: `Could not reach Discord: ${err.message}` });

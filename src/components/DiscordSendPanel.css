@@ -106,6 +106,27 @@
   cursor: not-allowed;
 }
 
+.discord-cancel-btn {
+  background: var(--surface-alt);
+  border: 1px solid #b3453a;
+  color: #b3453a;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.discord-cancel-btn:not(:disabled):hover {
+  background: #b3453a;
+  color: var(--surface);
+}
+
+.discord-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .discord-confirm {
   font-size: 13px;
   font-weight: 700;

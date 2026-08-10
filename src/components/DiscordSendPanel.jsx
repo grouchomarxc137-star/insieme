@@ -1,10 +1,29 @@
 import { useState } from 'react';
 import './DiscordSendPanel.css';
 
-export default function DiscordSendPanel({ title, subtitle, options, sendLabel = 'Send to Discord', user, messageLabel, updateNickname = false }) {
+export default function DiscordSendPanel({
+  title,
+  subtitle,
+  options,
+  sendLabel = 'Send to Discord',
+  user,
+  messageLabel,
+  // Whether/how picking an option also syncs the sender's server nickname:
+  // 'status' replaces the status half of the nickname, 'emergency'
+  // adds/replaces the emergency half alongside whatever status emoji is
+  // already there. Omit to skip nickname sync entirely.
+  emojiKind,
+  // Shows a "Cancel" button that retracts the last message sent from this
+  // panel and drops its emoji from the nickname (emergency half only) —
+  // currently only meaningful (and only wired server-side) for the
+  // Emergency Mood panel.
+  cancelable = false,
+  cancelLabel = 'Cancel',
+}) {
   const [selected, setSelected] = useState(null);
   const [lastSent, setLastSent] = useState(null);
   const [sending, setSending] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState(null);
 
   const selectedOption = options.find((o) => o.id === selected) || null;
@@ -19,11 +38,10 @@ export default function DiscordSendPanel({ title, subtitle, options, sendLabel =
       // server can delete their previous one and only the latest shows.
       const key = messageLabel ? `${user}-${messageLabel}` : undefined;
       // Only this panel's own emoji goes along, and only when it's opted
-      // into nickname sync — Emergency Mood posts a message but never
-      // touches your server nickname.
+      // into nickname sync.
       const body =
-        updateNickname && selectedOption.emoji
-          ? { content, key, user, emoji: selectedOption.emoji }
+        emojiKind && selectedOption.emoji
+          ? { content, key, user, emoji: selectedOption.emoji, emojiKind }
           : { content, key };
       const response = await fetch('/api/discord-message', {
         method: 'POST',
@@ -36,6 +54,26 @@ export default function DiscordSendPanel({ title, subtitle, options, sendLabel =
       setError("Couldn't send — try again.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (cancelling) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/emergency-mood/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user }),
+      });
+      if (!response.ok) throw new Error('Discord relay rejected the cancel');
+      setSelected(null);
+      setLastSent(null);
+    } catch {
+      setError("Couldn't cancel — try again.");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -71,6 +109,11 @@ export default function DiscordSendPanel({ title, subtitle, options, sendLabel =
         >
           {sending ? 'Sending…' : sendLabel}
         </button>
+        {cancelable && (
+          <button type="button" className="discord-cancel-btn" onClick={handleCancel} disabled={cancelling}>
+            {cancelling ? 'Cancelling…' : cancelLabel}
+          </button>
+        )}
         {error && <span className="discord-error">{error}</span>}
         {!error && lastSent && (
           <span className="discord-confirm">

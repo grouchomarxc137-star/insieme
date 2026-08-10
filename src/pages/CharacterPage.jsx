@@ -8,17 +8,8 @@ import {
   CHARACTER_STAGE_LEVELS,
   MAX_LEVEL,
 } from '../lib/growth.js';
-import { STATUS_OPTIONS } from '../lib/statusOptions.js';
+import { STATUS_OPTIONS, EMERGENCY_MOOD_OPTIONS } from '../lib/statusOptions.js';
 import './CharacterPage.css';
-
-const EMERGENCY_MOOD_OPTIONS = [
-  { id: 'overwhelmed', label: '😩 Overwhelmed' },
-  { id: 'overstimulated', label: '🌪️ Overstimulated' },
-  { id: 'anxious', label: '😰 Anxious' },
-  { id: 'sad', label: '😢 Sad' },
-  { id: 'need-bestfriend', label: '🫂 Need my bestfriend' },
-  { id: 'need-affection', label: '🥺 Need affection' },
-];
 
 const STAGE_LABELS = {
   principe: ['Fofinho', 'Bello', 'Prezioso', 'Tesorino', 'Principe'],
@@ -87,7 +78,7 @@ export default function CharacterPage({ user }) {
         options={STATUS_OPTIONS}
         user={user}
         messageLabel="status"
-        updateNickname
+        emojiKind="status"
       />
 
       <DiscordSendPanel
@@ -96,6 +87,8 @@ export default function CharacterPage({ user }) {
         options={EMERGENCY_MOOD_OPTIONS}
         user={user}
         messageLabel="emergency"
+        emojiKind="emergency"
+        cancelable
       />
     </div>
   );
