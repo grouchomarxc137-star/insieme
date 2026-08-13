@@ -27,6 +27,18 @@ export const STATUS_OPTIONS = [
     label: '✨ Divine attention',
     description: "All yours — no dividing attention with anything else.",
   },
+  {
+    id: 'sleep',
+    emoji: '😴',
+    label: '😴 Sleep',
+    description: "Sleeping — don't expect a response until I'm up.",
+  },
+  {
+    id: 'need-time',
+    emoji: '⏳',
+    label: '⏳ Need time',
+    description: "Need some space to myself right now — not about you, just need it.",
+  },
 ];
 
 export const STATUS_USERS = ['Principe', 'Principessa'];
