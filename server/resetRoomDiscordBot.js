@@ -120,13 +120,19 @@ async function clearChannelMessages(channel) {
   return totalDeleted;
 }
 
-function buildStatusMenuRow(user) {
-  return new ActionRowBuilder().addComponents(
-    STATUS_OPTIONS.map((option) =>
-      new ButtonBuilder()
-        .setCustomId(`${STATUS_BUTTON_PREFIX}:${user}:${option.id}`)
-        .setLabel(option.label)
-        .setStyle(STATUS_BUTTON_STYLE)
+// Discord caps an ActionRow at 5 buttons. STATUS_OPTIONS grew past that
+// (sleep/need-time added on top of the original 4), so — same treatment as
+// buildEmergencyMenuRows below — the status buttons spill onto additional
+// rows instead of all packing into one.
+function buildStatusMenuRows(user) {
+  return chunk(STATUS_OPTIONS, 5).map((group) =>
+    new ActionRowBuilder().addComponents(
+      group.map((option) =>
+        new ButtonBuilder()
+          .setCustomId(`${STATUS_BUTTON_PREFIX}:${user}:${option.id}`)
+          .setLabel(option.label)
+          .setStyle(STATUS_BUTTON_STYLE)
+      )
     )
   );
 }
@@ -189,11 +195,11 @@ async function ensureStatusMenu(channel, user) {
   if (!message) {
     message = await channel.send({
       embeds: [embed],
-      components: [buildStatusMenuRow(user)],
+      components: buildStatusMenuRows(user),
     });
     console.log(`[discord] created status menu for ${user}: ${message.id}`);
   } else {
-    await message.edit({ content: '', embeds: [embed], components: [buildStatusMenuRow(user)] });
+    await message.edit({ content: '', embeds: [embed], components: buildStatusMenuRows(user) });
   }
 
   if (!message.pinned) {
