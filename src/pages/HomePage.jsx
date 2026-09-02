@@ -32,7 +32,7 @@ export default function HomePage({ user }) {
         <div className="nido-hero-inner">
           <p className="nido-eyebrow">Il nostro nido</p>
           <h1>Buongiorno, {user}</h1>
-          <p className="nido-sub">Where we're headed together — and what's on the list today.</p>
+          <p className="nido-sub">Where we're headed, and what's on the list today.</p>
           <div className="nido-badges">
             <span className="nido-badge">{stage.icon} {stage.label} · Lv. {level} / {MAX_LEVEL}</span>
             <span className="nido-badge">⚡ Growth {multiplier}×</span>

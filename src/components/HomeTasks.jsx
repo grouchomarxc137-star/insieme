@@ -48,10 +48,7 @@ export default function HomeTasks({ user, tickets, loading, error, createTicket,
   return (
     <section className="home-tasks" aria-label="Our tasks">
       <div className="home-tasks-header">
-        <div>
-          <h2>Le nostre task</h2>
-          <p>Tasks we set for ourselves — private, no Discord, one tap to close.</p>
-        </div>
+        <h2>Our tasks</h2>
         <SolvedTodayPill count={solvedToday} />
       </div>
 

@@ -22,14 +22,8 @@
 }
 
 .home-tasks-header h2 {
-  margin: 0 0 2px;
-  font-size: 19px;
-}
-
-.home-tasks-header p {
   margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 19px;
 }
 
 .home-tasks-streak {
