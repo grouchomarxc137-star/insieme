@@ -65,3 +65,161 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* ── Add / edit ─────────────────────────── */
+.moment-add-btn {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 12px 20px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.moment-add-btn:hover {
+  background: var(--surface-alt);
+  border-color: var(--lavender-strong);
+}
+
+.moment-error {
+  margin: 0;
+  color: #b3453a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.moment-editor {
+  gap: 12px;
+}
+
+.moment-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.moment-edit-btn {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.moment-edit-btn:hover {
+  background: var(--lavender);
+  color: var(--text);
+}
+
+.moment-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.moment-field input[type='text'],
+.moment-field input[type='datetime-local'] {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.moment-icon-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.moment-icon-choice {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  font-size: 17px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.moment-icon-choice.is-selected {
+  border-color: var(--text);
+  background: var(--gold);
+}
+
+.moment-icon-custom {
+  width: 56px;
+  font: inherit;
+  font-size: 15px;
+  text-align: center;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.moment-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.moment-btn {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.moment-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.moment-btn--primary {
+  background: var(--gold);
+  border-color: var(--gold-strong);
+  color: #5b4620;
+}
+
+.moment-btn--primary:hover:not(:disabled) {
+  background: var(--gold-strong);
+}
+
+.moment-btn--danger {
+  margin-left: auto;
+  color: #b3453a;
+}
+
+.moment-btn--danger:hover:not(:disabled) {
+  background: var(--pink);
+  color: var(--text);
+}
+
+.moment-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

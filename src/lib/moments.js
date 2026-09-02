@@ -1,5 +1,8 @@
-// Relationship milestones — the dates behind the Moments counters.
-export const MILESTONES = [
+// The milestones behind the Moments counters live in the database now and
+// are editable in the app (see server/milestonesRepo.js). These three are
+// seeded on first run — their string ids are kept so the Discord
+// anniversary reminder's per-milestone dedup survives the move.
+export const DEFAULT_MILESTONES = [
   { id: 'speaking', icon: '💬', label: 'Since we started talking', date: '2025-11-07T23:59:00' },
   { id: 'official', icon: '💍', label: 'Since we made it official', date: '2026-01-29T18:00:00' },
   { id: 'first-met', icon: '💋', label: 'Since we first met IRL', date: '2026-02-13T00:00:00' },

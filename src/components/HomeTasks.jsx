@@ -39,9 +39,24 @@ function priorityTag(priority) {
   return String(priority || '').trim().slice(0, 2).toUpperCase() || 'P3';
 }
 
+// P1 is the most urgent, P5 the least — so a smaller number sorts first.
+function priorityRank(priority) {
+  const n = Number(priorityTag(priority).slice(1));
+  return Number.isFinite(n) ? n : 3;
+}
+
+// The to-do list orders by priority first (P1 → P5), then most-recently
+// touched within the same priority. Adding a P5 after a P2 leaves the P2 on
+// top; it doesn't jump the queue just for being newer.
+function sortByPriority(list) {
+  return [...list].sort(
+    (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || new Date(b.updatedAt) - new Date(a.updatedAt)
+  );
+}
+
 export default function HomeTasks({ user, tickets, loading, error, createTicket, updateTicket, deleteTicket }) {
   const mine = tickets.filter((t) => t.scope === TICKET_SCOPE.PERSONAL && t.createdBy === user);
-  const open = sortByUpdated(mine.filter((t) => t.status !== TICKET_STATUS.HANDLED));
+  const open = sortByPriority(mine.filter((t) => t.status !== TICKET_STATUS.HANDLED));
   const done = sortByUpdated(mine.filter((t) => t.status === TICKET_STATUS.HANDLED));
   const solvedToday = countPersonalSolvedToday(tickets, user);
 

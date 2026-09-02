@@ -178,6 +178,22 @@ if (!ticketColumns.includes('scope')) {
   db.exec(`ALTER TABLE tickets ADD COLUMN scope TEXT NOT NULL DEFAULT 'shared'`);
 }
 
+// Relationship milestones behind the Moments counters. Used to be a
+// hard-coded array in src/lib/moments.js; now editable in the app. The
+// original three are seeded on first run (see milestonesRepo.seedDefaults)
+// keeping their old string ids, so the Discord anniversary reminder's
+// per-milestone dedup keeps working across the switch.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS milestones (
+    id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    icon TEXT NOT NULL DEFAULT '💛',
+    date TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+`);
+
 // Backs discordRelay.js's "delete the previous message for this key, then
 // post a new one" dedup (used by the website's Status/Emergency Mood panels
 // and the in-Discord status buttons). This used to be an in-memory Map,

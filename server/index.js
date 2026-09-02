@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import express from 'express';
 import { Server } from 'socket.io';
-import { MILESTONES, getNextMonthlyAnniversary, formatDate } from '../src/lib/moments.js';
+import { getNextMonthlyAnniversary, formatDate } from '../src/lib/moments.js';
 import { typeLabel, getPeriodInfo } from '../src/lib/checkin.js';
 import { monthKeyOf, monthLabel, shiftMonth } from '../src/lib/heatmap.js';
 import {
@@ -32,6 +32,7 @@ import { notifyTicketEvent } from './ticketsDiscordNotify.js';
 import { ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
 import * as taskListsRepo from './taskListsRepo.js';
 import * as growthRepo from './growthRepo.js';
+import * as milestonesRepo from './milestonesRepo.js';
 import { FACTOR_CONFIG, DAILY_CHECKIN_AWARD } from '../src/lib/growthModel.js';
 
 const CHECKIN_TYPES = ['daily', 'weekly'];
@@ -329,6 +330,46 @@ app.delete('/api/tickets/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Moments milestones — the couple adds/edits/removes their own dates here
+// instead of them being hard-coded. Shared (no per-viewer scoping); the
+// Discord anniversary reminder reads the same table.
+app.get('/api/milestones', (req, res) => {
+  res.json({ milestones: milestonesRepo.listMilestones() });
+});
+
+app.post('/api/milestones', (req, res) => {
+  const { label, icon, date } = req.body || {};
+  const result = milestonesRepo.createMilestone({ label, icon, date });
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.status(201).json({ milestone: result });
+});
+
+app.patch('/api/milestones/:id', (req, res) => {
+  const { label, icon, date } = req.body || {};
+  const result = milestonesRepo.updateMilestone(req.params.id, { label, icon, date });
+  if (result.notFound) {
+    res.status(404).json({ error: result.error });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({ milestone: result });
+});
+
+app.delete('/api/milestones/:id', (req, res) => {
+  const result = milestonesRepo.deleteMilestone(req.params.id);
+  if (result.notFound) {
+    res.status(404).json({ error: result.error });
+    return;
+  }
+  res.json({ ok: true });
+});
+
 // Task lists — server-backed so both people see the same lists (and can
 // peek at each other's) from any device. `exists: false` with a default
 // state tells the client this list has never been saved, which is what
@@ -512,7 +553,7 @@ async function checkAnniversaryReminders() {
   const now = new Date();
   const todayKey = localDateKey(now);
 
-  for (const milestone of MILESTONES) {
+  for (const milestone of milestonesRepo.listMilestones()) {
     const baseDate = new Date(milestone.date);
     const nextAnniversary = getNextMonthlyAnniversary(baseDate, now);
     const reminderDay = new Date(nextAnniversary);
@@ -540,6 +581,10 @@ async function checkAnniversaryReminders() {
     }
   }
 }
+
+// Populate the milestones table with the original three on first run, before
+// anything reads from it.
+milestonesRepo.seedDefaults();
 
 // Check right away (covers a restart landing on a reminder day) and then
 // hourly — no cron dependency needed for once-a-day-ish precision.
