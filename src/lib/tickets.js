@@ -40,6 +40,21 @@ export const CATEGORY_OPTIONS = [
   'Other',
 ];
 
+// Personal tickets are always just tasks for ourselves, so they skip the
+// emotional categories above and pick from task-flavoured ones instead.
+// Stored verbatim in ticket.category (emoji included) — nothing parses them.
+export const TASK_CATEGORY_OPTIONS = [
+  '🏠 Chore',
+  '🏃 Errand',
+  '📋 Admin',
+  '💪 Health',
+  '💼 Work / study',
+  '🎨 Project',
+  '🌿 Self-care',
+  '💛 For us',
+  '✨ Other',
+];
+
 // Shared by every ticket regardless of category — the P-number stays the
 // urgency scale, the label after it just reads as importance rather than
 // something tied specifically to emotional weight.

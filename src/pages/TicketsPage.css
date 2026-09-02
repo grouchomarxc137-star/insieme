@@ -173,11 +173,6 @@
   border-top-color: var(--gold-strong);
 }
 
-.tickets-scope-section--personal {
-  border-top-color: var(--mint-strong);
-  background: color-mix(in srgb, var(--mint) 22%, var(--surface));
-}
-
 .tickets-scope-header h2.tickets-scope-title {
   margin: 0 0 2px;
   font-size: 19px;
@@ -499,6 +494,12 @@ details[open] > .ticket-summary .ticket-summary-chevron {
   margin-bottom: 24px;
 }
 
+/* Only the shared counter lives here now — the personal one moved to the
+   Home tasks block — so don't stretch it across the full width. */
+.tickets-counters--single {
+  grid-template-columns: minmax(0, 280px);
+}
+
 @media (max-width: 480px) {
   .tickets-counters {
     grid-template-columns: 1fr;
@@ -513,10 +514,6 @@ details[open] > .ticket-summary .ticket-summary-chevron {
   box-shadow: var(--shadow-soft);
   padding: 16px;
   text-align: center;
-}
-
-.tickets-counter-card--personal {
-  border-top-color: var(--mint-strong);
 }
 
 .tickets-counter-label {
@@ -558,10 +555,6 @@ details[open] > .ticket-summary .ticket-summary-chevron {
   border-radius: 999px;
   background: var(--gold-strong);
   transition: width 0.25s ease;
-}
-
-.tickets-counter-card--personal .tickets-counter-bar-fill {
-  background: var(--mint-strong);
 }
 
 .tickets-counter-next {

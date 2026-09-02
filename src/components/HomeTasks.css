@@ -1,0 +1,83 @@
+/* The tasks block on the Home page. Reuses the .tickets-* / .ticket-*
+   styles from TicketsPage.css for the form and cards inside; this file is
+   just the outer container and the "solved today" streak. */
+.home-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: color-mix(in srgb, var(--mint) 22%, var(--surface));
+  border: 1px solid var(--border);
+  border-top: 6px solid var(--mint-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+.home-tasks-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-tasks-header h2 {
+  margin: 0 0 2px;
+  font-size: 19px;
+}
+
+.home-tasks-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.home-tasks-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.home-tasks-streak-count {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+
+.home-tasks-streak-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.home-tasks-streak-next {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* "Done" is a <details> reusing .tickets-section — hide the native marker
+   and make the whole header the click target. */
+.home-tasks-group-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.home-tasks-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Task rows carry a category chip + priority tag, wider than the single
+   status pill the shared tickets show — let the row wrap on a narrow
+   screen so a long task name never gets crushed into a column of letters. */
+.home-tasks-summary {
+  flex-wrap: wrap;
+}
+
+.home-tasks-summary .ticket-summary-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}

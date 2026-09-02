@@ -12,7 +12,7 @@ import {
   ticketHasReplyStyle,
   isPersonalTicket,
 } from '../lib/tickets.js';
-import { countSharedSolvedToday, countPersonalSolvedToday, tierFor, nextTier } from '../lib/ticketTiers.js';
+import { countSharedSolvedToday, tierFor, nextTier } from '../lib/ticketTiers.js';
 import './TicketsPage.css';
 
 function formatDate(iso) {
@@ -30,11 +30,10 @@ export default function TicketsPage({ user }) {
   const otherName = otherAccount(user);
   const { tickets, loading, error, createTicket, updateTicket, deleteTicket } = useTickets(user);
 
-  // The server already keeps other people's personal tickets out of this
-  // list entirely (see ticketsRepo.listTicketsForViewer) — this split is
-  // just shared vs. mine-personal within what actually came back.
+  // Personal-scope tickets are our own to-do list now — they live on the
+  // Home page (see HomeTasks). This page is only the shared love-ticket
+  // workflow between the two of us.
   const shared = tickets.filter((t) => !isPersonalTicket(t));
-  const personal = tickets.filter((t) => isPersonalTicket(t));
 
   const incoming = shared.filter((t) => t.createdBy === otherName);
   const sent = shared.filter((t) => t.createdBy === user);
@@ -46,9 +45,6 @@ export default function TicketsPage({ user }) {
 
   const awaitingYourConfirmationTickets = sortByUpdated(sent.filter((t) => t.status === TICKET_STATUS.AWAITING));
   const sentTickets = sortByUpdated(sent.filter((t) => t.status !== TICKET_STATUS.AWAITING));
-
-  const openPersonalTickets = sortByUpdated(personal.filter((t) => t.status !== TICKET_STATUS.HANDLED));
-  const solvedPersonalTickets = sortByUpdated(personal.filter((t) => t.status === TICKET_STATUS.HANDLED));
 
   return (
     <div className="page">
@@ -133,54 +129,21 @@ export default function TicketsPage({ user }) {
               ))}
             </TicketSection>
           </section>
-
-          <section className="tickets-scope-section tickets-scope-section--personal">
-            <div className="tickets-scope-header">
-              <h2 className="tickets-scope-title">🗒️ Personal tickets</h2>
-              <p className="tickets-scope-subtitle">Just for you — private, no Discord, no confirmation needed.</p>
-            </div>
-
-            <CreatePersonalTicketSection user={user} onCreate={createTicket} />
-
-            <TicketSection
-              title="Open"
-              subtitle="Your own tasks and tickets."
-              count={openPersonalTickets.length}
-              emptyMessage="Nothing open. Add one above."
-            >
-              {openPersonalTickets.map((ticket) => (
-                <PersonalTicketCard key={ticket.id} ticket={ticket} user={user} onUpdate={updateTicket} onDelete={deleteTicket} />
-              ))}
-            </TicketSection>
-
-            <TicketSection
-              title="Solved"
-              subtitle="Marked done, folded away."
-              count={solvedPersonalTickets.length}
-              emptyMessage="Nothing solved yet."
-            >
-              {solvedPersonalTickets.map((ticket) => (
-                <PersonalTicketCard key={ticket.id} ticket={ticket} user={user} onUpdate={updateTicket} onDelete={deleteTicket} solved />
-              ))}
-            </TicketSection>
-          </section>
         </>
       )}
     </div>
   );
 }
 
-// Two independent "solved today" tallies — shared tickets solved for
-// otherName (validated by them), and personal tickets solved for yourself
-// (self-marked). Each gets its own tier since they're different kinds of
-// effort; see src/lib/ticketTiers.js for the counting/tier rules.
+// "Solved today" tally for the shared workflow — a ticket counts once its
+// creator validates the other person's reply. The matching "solved for
+// yourself" streak moved to the Home tasks block with the personal tickets;
+// see src/lib/ticketTiers.js for the counting/tier rules.
 function TicketsCounters({ tickets, user, otherName }) {
   const sharedCount = countSharedSolvedToday(tickets, user);
-  const personalCount = countPersonalSolvedToday(tickets, user);
   return (
-    <div className="tickets-counters">
+    <div className="tickets-counters tickets-counters--single">
       <TicketCounterCard label={`Solved with ${otherName} today`} count={sharedCount} accent="shared" />
-      <TicketCounterCard label="Solved for yourself today" count={personalCount} accent="personal" />
     </div>
   );
 }
@@ -411,128 +374,6 @@ function TicketForm({ user, otherName, onCreate }) {
 
       <button type="submit" className="tickets-submit-btn" disabled={submitting}>
         {submitting ? 'Sending…' : isTask ? 'Submit ticket' : 'Submit love ticket 💛'}
-      </button>
-    </form>
-  );
-}
-
-const INITIAL_PERSONAL_FORM_STATE = {
-  title: '',
-  category: 'Task',
-  priority: PRIORITY_OPTIONS[0],
-  message: '',
-};
-
-function CreatePersonalTicketSection({ user, onCreate }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="tickets-create-section">
-      <button
-        type="button"
-        className="tickets-open-btn tickets-open-btn--personal"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-      >
-        <span>📝 Add a personal ticket</span>
-        <span className={`tickets-open-btn-chevron${open ? ' is-open' : ''}`} aria-hidden="true">
-          ▾
-        </span>
-      </button>
-      <div className={`tickets-form-collapse${open ? ' is-open' : ''}`}>
-        <div className="tickets-form-collapse-inner">
-          <PersonalTicketForm user={user} onCreate={onCreate} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PersonalTicketForm({ user, onCreate }) {
-  const [form, setForm] = useState(INITIAL_PERSONAL_FORM_STATE);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-
-  function setField(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    if (!form.title.trim() || !form.message.trim()) {
-      setError('Give it a title and describe what needs doing.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const ticket = await onCreate({ ...form, need: '', replyStyle: '', createdBy: user, scope: TICKET_SCOPE.PERSONAL });
-      setForm(INITIAL_PERSONAL_FORM_STATE);
-      setSuccess(`Personal ticket #${ticket.id} added.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <form className="tickets-form tickets-form--personal" onSubmit={handleSubmit}>
-      <h2>Personal ticket</h2>
-      <p className="tickets-form-intro">Just for you — a task or note to yourself. No reply, no confirmation.</p>
-
-      <label>
-        Ticket title
-        <input
-          type="text"
-          className="tickets-input"
-          value={form.title}
-          onChange={(e) => setField('title', e.target.value)}
-          placeholder="A short summary"
-        />
-      </label>
-
-      <div className="tickets-form-row">
-        <label>
-          Category
-          <select className="tickets-select" value={form.category} onChange={(e) => setField('category', e.target.value)}>
-            {CATEGORY_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Priority
-          <select className="tickets-select" value={form.priority} onChange={(e) => setField('priority', e.target.value)}>
-            {PRIORITY_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label>
-        What needs doing?
-        <textarea
-          className="tickets-textarea"
-          value={form.message}
-          onChange={(e) => setField('message', e.target.value)}
-          placeholder="Describe the task or note to yourself."
-          rows={3}
-        />
-      </label>
-
-      {error && <p className="tickets-error">{error}</p>}
-      {success && <p className="tickets-success">{success}</p>}
-
-      <button type="submit" className="tickets-submit-btn tickets-submit-btn--personal" disabled={submitting}>
-        {submitting ? 'Adding…' : 'Add ticket 📝'}
       </button>
     </form>
   );
@@ -890,79 +731,6 @@ function SentTicketCard({ ticket }) {
         ) : (
           <p className="tickets-hint">No reply yet.</p>
         )}
-      </div>
-    </details>
-  );
-}
-
-// Personal tickets skip the whole receive/reply/validate handshake — one
-// card, one action: solve it (or reopen it if solved by mistake).
-function PersonalTicketCard({ ticket, user, onUpdate, onDelete, solved }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-
-  async function solve() {
-    setBusy(true);
-    setError(null);
-    try {
-      await onUpdate(ticket.id, { actor: user, action: 'solve_personal_ticket' });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reopen() {
-    setBusy(true);
-    setError(null);
-    try {
-      await onUpdate(ticket.id, { actor: user, action: 'reopen_personal_ticket' });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!window.confirm('Delete this ticket?')) return;
-    try {
-      await onDelete(ticket.id);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  return (
-    <details className="ticket-card ticket-card--personal ticket-card--collapsible">
-      <TicketSummary ticket={ticket} />
-      <div className="ticket-details-content">
-        <TicketMeta ticket={ticket} />
-
-        <div className="ticket-body">
-          <strong>What needs doing:</strong>
-          <p>{ticket.message}</p>
-        </div>
-
-        {solved && <p className="tickets-hint">Solved {formatDate(ticket.confirmedAt)}.</p>}
-
-        {error && <p className="tickets-error">{error}</p>}
-
-        <div className="ticket-actions">
-          {solved ? (
-            <button type="button" className="tickets-btn tickets-btn--ghost" onClick={reopen} disabled={busy}>
-              Reopen
-            </button>
-          ) : (
-            <button type="button" className="tickets-btn tickets-btn--personal" onClick={solve} disabled={busy}>
-              Mark solved ✅
-            </button>
-          )}
-          <button type="button" className="tickets-btn tickets-btn--ghost" onClick={handleDelete}>
-            Delete
-          </button>
-        </div>
       </div>
     </details>
   );
