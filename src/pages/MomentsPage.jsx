@@ -25,6 +25,15 @@ export default function MomentsPage() {
   const now = useLiveNow();
   const { milestones, loading, error, createMilestone, updateMilestone, deleteMilestone } = useMilestones();
 
+  // Pinned moments float to the front (the server sorts the same way, but
+  // re-sort here too so a pin toggle reorders instantly, before the next poll).
+  const ordered = [...milestones].sort(
+    (a, b) =>
+      Number(b.pinned) - Number(a.pinned) ||
+      a.sortOrder - b.sortOrder ||
+      new Date(a.createdAt) - new Date(b.createdAt)
+  );
+
   return (
     <div className="page">
       <div className="page-header">
@@ -40,7 +49,7 @@ export default function MomentsPage() {
         <p className="moment-detail">Loading…</p>
       ) : (
         <div className="moments-grid">
-          {milestones.map((milestone, index) => (
+          {ordered.map((milestone, index) => (
             <MomentCard
               key={milestone.id}
               milestone={milestone}
@@ -50,7 +59,7 @@ export default function MomentsPage() {
               onDelete={deleteMilestone}
             />
           ))}
-          <FutureMomentCard accent={ACCENTS[milestones.length % ACCENTS.length]} />
+          <FutureMomentCard accent={ACCENTS[ordered.length % ACCENTS.length]} />
         </div>
       )}
     </div>
@@ -85,17 +94,28 @@ function MomentCard({ milestone, now, accent, onUpdate, onDelete }) {
   const untilAnniversary = getDurationParts(now, nextAnniversary);
 
   return (
-    <article className={`moment-card moment-card--${accent}`}>
+    <article className={`moment-card moment-card--${accent}${milestone.pinned ? ' moment-card--pinned' : ''}`}>
       <div className="moment-card-top">
         <span className="moment-icon">{milestone.icon}</span>
-        <button
-          type="button"
-          className="moment-edit-btn"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit "${milestone.label}"`}
-        >
-          Edit
-        </button>
+        <div className="moment-card-actions">
+          <button
+            type="button"
+            className={`moment-pin-btn${milestone.pinned ? ' is-pinned' : ''}`}
+            onClick={() => onUpdate(milestone.id, { pinned: !milestone.pinned })}
+            aria-pressed={milestone.pinned}
+            aria-label={milestone.pinned ? `Unpin "${milestone.label}"` : `Pin "${milestone.label}"`}
+          >
+            {milestone.pinned ? '📌 Pinned' : 'Pin'}
+          </button>
+          <button
+            type="button"
+            className="moment-edit-btn"
+            onClick={() => setEditing(true)}
+            aria-label={`Edit "${milestone.label}"`}
+          >
+            Edit
+          </button>
+        </div>
       </div>
       <h2 className="moment-title">{milestone.label}</h2>
       <p className="moment-counter">

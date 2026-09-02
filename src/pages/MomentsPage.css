@@ -42,6 +42,15 @@
   opacity: 0.75;
 }
 
+/* Pinned wins over the rotating accent colour and gets a full gold ring so
+   it reads as "the important one" even mid-scroll. Placed after the accent
+   rules so its border-top-color takes precedence. */
+.moment-card--pinned {
+  border-color: var(--gold-strong);
+  border-top-color: var(--gold-strong);
+  box-shadow: 0 0 0 2px var(--gold-strong), var(--shadow-card);
+}
+
 .moment-icon {
   font-size: 28px;
 }
@@ -104,7 +113,13 @@
   gap: 8px;
 }
 
-.moment-edit-btn {
+.moment-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.moment-edit-btn,
+.moment-pin-btn {
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -113,11 +128,23 @@
   font-weight: 700;
   color: var(--text-muted);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .moment-edit-btn:hover {
   background: var(--lavender);
   color: var(--text);
+}
+
+.moment-pin-btn:hover {
+  background: var(--gold);
+  color: var(--text);
+}
+
+.moment-pin-btn.is-pinned {
+  background: var(--gold);
+  border-color: var(--gold-strong);
+  color: #5b4620;
 }
 
 .moment-field {

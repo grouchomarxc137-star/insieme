@@ -190,9 +190,17 @@ db.exec(`
     icon TEXT NOT NULL DEFAULT '💛',
     date TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
+    pinned INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
   );
 `);
+
+// `pinned` was added after the table shipped — a pinned milestone sorts to
+// the front of the Moments page regardless of its date.
+const milestoneColumns = db.prepare(`PRAGMA table_info(milestones)`).all().map((c) => c.name);
+if (!milestoneColumns.includes('pinned')) {
+  db.exec(`ALTER TABLE milestones ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
+}
 
 // Backs discordRelay.js's "delete the previous message for this key, then
 // post a new one" dedup (used by the website's Status/Emergency Mood panels

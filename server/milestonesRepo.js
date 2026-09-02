@@ -12,6 +12,7 @@ function rowToMilestone(row) {
     icon: row.icon,
     date: row.date,
     sortOrder: row.sort_order,
+    pinned: row.pinned === 1,
     createdAt: row.created_at,
   };
 }
@@ -33,7 +34,7 @@ export function seedDefaults() {
 
 export function listMilestones() {
   return db
-    .prepare(`SELECT * FROM milestones ORDER BY sort_order ASC, created_at ASC`)
+    .prepare(`SELECT * FROM milestones ORDER BY pinned DESC, sort_order ASC, created_at ASC`)
     .all()
     .map(rowToMilestone);
 }
@@ -58,7 +59,7 @@ export function createMilestone({ label, icon, date }) {
   return getMilestone(id);
 }
 
-export function updateMilestone(id, { label, icon, date }) {
+export function updateMilestone(id, { label, icon, date, pinned }) {
   const existing = getMilestone(id);
   if (!existing) return { error: 'Milestone not found.', notFound: true };
   const clean = validate({
@@ -67,10 +68,12 @@ export function updateMilestone(id, { label, icon, date }) {
     date: date ?? existing.date,
   });
   if (clean.error) return clean;
-  db.prepare(`UPDATE milestones SET label = ?, icon = ?, date = ? WHERE id = ?`).run(
+  const nextPinned = pinned === undefined ? existing.pinned : Boolean(pinned);
+  db.prepare(`UPDATE milestones SET label = ?, icon = ?, date = ?, pinned = ? WHERE id = ?`).run(
     clean.label,
     clean.icon,
     clean.date,
+    nextPinned ? 1 : 0,
     id
   );
   return getMilestone(id);

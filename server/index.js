@@ -348,8 +348,8 @@ app.post('/api/milestones', (req, res) => {
 });
 
 app.patch('/api/milestones/:id', (req, res) => {
-  const { label, icon, date } = req.body || {};
-  const result = milestonesRepo.updateMilestone(req.params.id, { label, icon, date });
+  const { label, icon, date, pinned } = req.body || {};
+  const result = milestonesRepo.updateMilestone(req.params.id, { label, icon, date, pinned });
   if (result.notFound) {
     res.status(404).json({ error: result.error });
     return;
