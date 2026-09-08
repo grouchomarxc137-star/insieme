@@ -269,7 +269,7 @@
 }
 
 .ticket-card--personal {
-  border-top-color: var(--mint-strong);
+  border-top-color: var(--text);
 }
 
 /* Every ticket card is a <details> element: the summary is the minimized
@@ -451,14 +451,17 @@ details[open] > .ticket-summary .ticket-summary-chevron {
   color: var(--text);
 }
 
+/* Personal (Home) tasks outline in cacao rather than the old mint, matching
+   the nido hero — the green read as a third accent competing with the honey
+   and apricot everywhere else on the page. */
 .tickets-btn--personal {
-  background: var(--mint);
-  border-color: var(--mint-strong);
-  color: #2f4a24;
+  background: var(--gold);
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .tickets-btn--personal:hover:not(:disabled) {
-  background: var(--mint-strong);
+  background: var(--gold-strong);
 }
 
 .tickets-btn:disabled {
@@ -467,21 +470,21 @@ details[open] > .ticket-summary .ticket-summary-chevron {
 }
 
 .tickets-open-btn--personal {
-  border-top-color: var(--mint-strong);
+  border-top-color: var(--text);
 }
 
 .tickets-form--personal {
-  border-top-color: var(--mint-strong);
+  border-top-color: var(--text);
 }
 
 .tickets-submit-btn--personal {
-  background: var(--mint);
-  border-color: var(--mint-strong);
-  color: #2f4a24;
+  background: var(--gold);
+  border-color: var(--text);
+  color: var(--text);
 }
 
 .tickets-submit-btn--personal:hover:not(:disabled) {
-  background: var(--mint-strong);
+  background: var(--gold-strong);
 }
 
 /* "Solved today" counters — two cards, one per scope, each with its own

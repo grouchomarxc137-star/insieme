@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "insieme-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "server"],
+      "port": 8787
+    },
+    {
       "name": "insieme-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

@@ -2,6 +2,7 @@
 // insieme's shared db.js and Principe/Principessa casing.
 import db from './db.js';
 import { TICKET_STATUS, OPEN_STATUSES, ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
+import { clampDuration, isDayKey, isSlot, DEFAULT_DURATION_MIN } from '../src/lib/schedule.js';
 
 const now = () => new Date().toISOString();
 
@@ -36,6 +37,9 @@ function ticketFromRow(row) {
     confirmedAt: row.confirmed_at || '',
     discordMessageId: row.discord_message_id || '',
     scope: row.scope || TICKET_SCOPE.SHARED,
+    plannedDay: row.planned_day || '',
+    scheduledAt: row.scheduled_at || '',
+    durationMin: row.duration_min || DEFAULT_DURATION_MIN,
   };
 }
 
@@ -94,7 +98,8 @@ function persist(ticket, changes) {
   const merged = { ...ticket, ...changes };
   db.prepare(
     `UPDATE tickets SET title = ?, category = ?, priority = ?, reply_style = ?, mood = ?, message = ?, need = ?,
-       status = ?, reply = ?, updated_at = ?, replied_at = ?, validated_at = ?, confirmed_at = ? WHERE id = ?`
+       status = ?, reply = ?, updated_at = ?, replied_at = ?, validated_at = ?, confirmed_at = ?,
+       planned_day = ?, scheduled_at = ?, duration_min = ? WHERE id = ?`
   ).run(
     merged.title,
     merged.category,
@@ -109,6 +114,9 @@ function persist(ticket, changes) {
     merged.repliedAt || null,
     merged.validatedAt || null,
     merged.confirmedAt || null,
+    merged.plannedDay || null,
+    merged.scheduledAt || null,
+    clampDuration(merged.durationMin),
     ticket.id
   );
   return getTicket(ticket.id);
@@ -120,7 +128,7 @@ function persist(ticket, changes) {
 // actor/status combination allowed to perform that step; with only two
 // accounts in this app, "the creator" vs "the other person" is what stands
 // in for the four distinct workflow roles.
-export function applyTicketAction(id, { actor, action, status, reply }) {
+export function applyTicketAction(id, { actor, action, status, reply, day, scheduledAt, durationMin }) {
   if (!ACCOUNT_ROLES.includes(actor)) {
     return { error: 'Unknown actor.' };
   }
@@ -190,9 +198,59 @@ export function applyTicketAction(id, { actor, action, status, reply }) {
         ticket: persist(ticket, { status: TICKET_STATUS.OPEN, confirmedAt: '', updatedAt: timestamp }),
       };
     }
+    // Calendar planning — personal tasks only, and only the owner's own. The
+    // three actions below never touch `status`, so planning a task is purely
+    // a scheduling decision: nothing here can solve or reopen it.
+    case 'plan_for_day': {
+      const guard = guardPersonal(ticket, isCreator);
+      if (guard) return guard;
+      if (day && !isDayKey(day)) return { error: 'Invalid day.' };
+      // Taking a task off the day also takes it off that day's grid —
+      // otherwise a block would sit there with nothing in the list claiming
+      // it, and the two fields could drift apart.
+      return {
+        ticket: persist(ticket, {
+          plannedDay: day || '',
+          scheduledAt: day ? ticket.scheduledAt : '',
+          updatedAt: timestamp,
+        }),
+      };
+    }
+    case 'schedule_task': {
+      const guard = guardPersonal(ticket, isCreator);
+      if (guard) return guard;
+      if (scheduledAt && !isSlot(scheduledAt)) return { error: 'Invalid time slot.' };
+      // Dropping a task onto a day is also a statement that it's planned for
+      // that day, so `plannedDay` follows the slot rather than being a second
+      // thing to keep in sync by hand. Clearing the slot (dragging a block
+      // back to the list) leaves the day alone — it stays on the list,
+      // just unscheduled.
+      return {
+        ticket: persist(ticket, {
+          scheduledAt: scheduledAt || '',
+          plannedDay: scheduledAt ? scheduledAt.slice(0, 10) : ticket.plannedDay,
+          durationMin: durationMin === undefined ? ticket.durationMin : clampDuration(durationMin),
+          updatedAt: timestamp,
+        }),
+      };
+    }
+    case 'set_duration': {
+      const guard = guardPersonal(ticket, isCreator);
+      if (guard) return guard;
+      return { ticket: persist(ticket, { durationMin: clampDuration(durationMin), updatedAt: timestamp }) };
+    }
     default:
       return { error: 'Unknown ticket action.' };
   }
+}
+
+// The shared precondition for every planning action: a shared ticket has a
+// workflow of its own and no place on a private calendar, and nobody plans
+// someone else's day for them.
+function guardPersonal(ticket, isCreator) {
+  if (ticket.scope !== TICKET_SCOPE.PERSONAL) return { error: 'Only personal tasks can be planned.' };
+  if (!isCreator) return { error: 'Only the task owner can plan it.' };
+  return null;
 }
 
 export function deleteTicket(id) {

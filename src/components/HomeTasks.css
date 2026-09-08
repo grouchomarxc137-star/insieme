@@ -5,11 +5,14 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: color-mix(in srgb, var(--mint) 22%, var(--surface));
-  border: 1px solid var(--border);
-  border-top: 6px solid var(--mint-strong);
+  background: var(--surface);
+  /* Outlined in cacao with a flat offset shadow, the same treatment as the
+     nido hero directly above it — the two then read as one stacked pair
+     rather than a bordered card under a green-topped one. */
+  border: 2px solid var(--text);
+  border-top: 6px solid var(--text);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 4px 0 var(--text);
   padding: 20px;
 }
 
@@ -74,4 +77,52 @@
 .home-tasks-summary .ticket-summary-title {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* Marks a task for the Calendar page's day rail. Quiet until it's on, then
+   it takes the honey fill so a scan of the collapsed list shows what the day
+   is already carrying. */
+.home-tasks-today-btn {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.home-tasks-today-btn:hover:not(:disabled) {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.home-tasks-today-btn.is-planned {
+  background: var(--gold);
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.home-tasks-today-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* The time estimate that sets the height of this task's calendar block. */
+.home-tasks-estimate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.home-tasks-estimate .tickets-select {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 12px;
 }

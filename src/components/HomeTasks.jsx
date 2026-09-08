@@ -4,7 +4,10 @@ import {
   TICKET_SCOPE,
   TASK_CATEGORY_OPTIONS,
   PRIORITY_OPTIONS,
+  priorityTag,
+  sortByPriority,
 } from '../lib/tickets.js';
+import { dayKey, formatDuration, DURATION_OPTIONS } from '../lib/schedule.js';
 import {
   taskXpForPriority,
   countPersonalSolvedToday,
@@ -31,27 +34,6 @@ function formatDate(iso) {
 
 function sortByUpdated(list) {
   return [...list].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-}
-
-// Just the "P2" tag for the collapsed row — the full "P2 - high priority"
-// string is too wide for the summary on a phone.
-function priorityTag(priority) {
-  return String(priority || '').trim().slice(0, 2).toUpperCase() || 'P3';
-}
-
-// P1 is the most urgent, P5 the least — so a smaller number sorts first.
-function priorityRank(priority) {
-  const n = Number(priorityTag(priority).slice(1));
-  return Number.isFinite(n) ? n : 3;
-}
-
-// The to-do list orders by priority first (P1 → P5), then most-recently
-// touched within the same priority. Adding a P5 after a P2 leaves the P2 on
-// top; it doesn't jump the queue just for being newer.
-function sortByPriority(list) {
-  return [...list].sort(
-    (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || new Date(b.updatedAt) - new Date(a.updatedAt)
-  );
 }
 
 export default function HomeTasks({ user, tickets, loading, error, createTicket, updateTicket, deleteTicket }) {
@@ -157,13 +139,15 @@ function TaskCard({ ticket, user, onUpdate, onDelete, solved }) {
   // scope: 'personal' routes it to this person's own pot, like the old
   // personal daily tasks did.
   const award = { xp, factor: TASK_FACTOR, factorGain: TASK_FACTOR_GAIN, scope: 'personal', user };
+  const today = dayKey();
+  const plannedToday = ticket.plannedDay === today;
 
-  async function run(action, effect) {
+  async function run(payload, effect) {
     setBusy(true);
     setError(null);
     try {
-      await onUpdate(ticket.id, { actor: user, action });
-      effect().catch(() => {});
+      await onUpdate(ticket.id, { actor: user, ...payload });
+      if (effect) effect().catch(() => {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -185,6 +169,25 @@ function TaskCard({ ticket, user, onUpdate, onDelete, solved }) {
       <summary className="ticket-summary home-tasks-summary">
         <span className="ticket-summary-title">{ticket.title}</span>
         <span className="ticket-summary-right">
+          {!solved && (
+            // Inside a <summary>, so it has to stop the click from also
+            // expanding the card — marking a task for today is a one-tap
+            // decision you make while scanning the collapsed list.
+            <button
+              type="button"
+              className={`home-tasks-today-btn${plannedToday ? ' is-planned' : ''}`}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                run({ action: 'plan_for_day', day: plannedToday ? null : today });
+              }}
+              disabled={busy}
+              aria-pressed={plannedToday}
+              aria-label={plannedToday ? `Take "${ticket.title}" off today` : `Mark "${ticket.title}" for today`}
+            >
+              {plannedToday ? '📅 Today' : '＋ Today'}
+            </button>
+          )}
           <span className="tickets-chip">{ticket.category}</span>
           <span className="tickets-status-pill">{priorityTag(ticket.priority)}</span>
           <span className="ticket-summary-chevron" aria-hidden="true">
@@ -203,6 +206,26 @@ function TaskCard({ ticket, user, onUpdate, onDelete, solved }) {
         <div className="ticket-chip-row">
           <span className="tickets-chip">{ticket.priority}</span>
           <span className="tickets-chip">♥ {xp} XP{solved ? ' · earned' : ''}</span>
+          {!solved && (
+            // The estimate set here is what decides how tall the task's block
+            // is on the Calendar page, so it's worth picking before you go
+            // and drag the day into shape.
+            <label className="home-tasks-estimate">
+              <span>Takes</span>
+              <select
+                className="tickets-select"
+                value={ticket.durationMin}
+                onChange={(event) => run({ action: 'set_duration', durationMin: Number(event.target.value) })}
+                disabled={busy}
+              >
+                {DURATION_OPTIONS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {formatDuration(minutes)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
         {solved && <p className="tickets-hint">Done {formatDate(ticket.confirmedAt)}.</p>}
@@ -213,7 +236,7 @@ function TaskCard({ ticket, user, onUpdate, onDelete, solved }) {
             <button
               type="button"
               className="tickets-btn tickets-btn--ghost"
-              onClick={() => run('reopen_personal_ticket', () => unawardGrowth(award))}
+              onClick={() => run({ action: 'reopen_personal_ticket' }, () => unawardGrowth(award))}
               disabled={busy}
             >
               Reopen
@@ -222,7 +245,7 @@ function TaskCard({ ticket, user, onUpdate, onDelete, solved }) {
             <button
               type="button"
               className="tickets-btn tickets-btn--personal"
-              onClick={() => run('solve_personal_ticket', () => awardGrowth(award))}
+              onClick={() => run({ action: 'solve_personal_ticket' }, () => awardGrowth(award))}
               disabled={busy}
             >
               Mark done ✅

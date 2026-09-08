@@ -177,6 +177,22 @@ if (!ticketColumns.includes('discord_message_id')) {
 if (!ticketColumns.includes('scope')) {
   db.exec(`ALTER TABLE tickets ADD COLUMN scope TEXT NOT NULL DEFAULT 'shared'`);
 }
+// Calendar scheduling, added after tickets shipped. `planned_day` is the
+// "I mean to do this on <day>" flag set from the Home task list;
+// `scheduled_at` is the wall-clock slot it was dropped on in the Calendar
+// page ("2026-09-08T14:30", never a UTC instant — see src/lib/schedule.js);
+// `duration_min` is the time estimate that decides how tall its block is.
+// All three stay null/default on existing rows, so a task nobody has planned
+// simply never appears on the calendar.
+if (!ticketColumns.includes('planned_day')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN planned_day TEXT`);
+}
+if (!ticketColumns.includes('scheduled_at')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN scheduled_at TEXT`);
+}
+if (!ticketColumns.includes('duration_min')) {
+  db.exec(`ALTER TABLE tickets ADD COLUMN duration_min INTEGER NOT NULL DEFAULT 30`);
+}
 
 // Relationship milestones behind the Moments counters. Used to be a
 // hard-coded array in src/lib/moments.js; now editable in the app. The

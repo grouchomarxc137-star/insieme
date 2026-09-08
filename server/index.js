@@ -301,8 +301,16 @@ app.post('/api/tickets', (req, res) => {
 });
 
 app.patch('/api/tickets/:id', (req, res) => {
-  const { actor, action, status, reply } = req.body || {};
-  const result = ticketsRepo.applyTicketAction(req.params.id, { actor, action, status, reply });
+  const { actor, action, status, reply, day, scheduledAt, durationMin } = req.body || {};
+  const result = ticketsRepo.applyTicketAction(req.params.id, {
+    actor,
+    action,
+    status,
+    reply,
+    day,
+    scheduledAt,
+    durationMin,
+  });
   if (result.notFound) {
     res.status(404).json({ error: result.error });
     return;

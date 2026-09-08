@@ -2,6 +2,7 @@ import { useState } from 'react';
 import TopBar from './components/TopBar.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
+import CalendarPage from './pages/CalendarPage.jsx';
 import CharacterPage from './pages/CharacterPage.jsx';
 import PlantPage from './pages/PlantPage.jsx';
 import MomentsPage from './pages/MomentsPage.jsx';
@@ -14,6 +15,7 @@ import './App.css';
 
 export const TABS = [
   { id: 'home', label: 'Home' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'character', label: 'Character' },
   { id: 'plant', label: 'Plant' },
   { id: 'moments', label: 'Moments' },
@@ -24,6 +26,7 @@ export const TABS = [
 
 const PAGES = {
   home: HomePage,
+  calendar: CalendarPage,
   character: CharacterPage,
   plant: PlantPage,
   moments: MomentsPage,

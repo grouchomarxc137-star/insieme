@@ -66,6 +66,28 @@ export const PRIORITY_OPTIONS = [
   'P1 - urgent',
 ];
 
+// Just the leading "P2" of a priority string — the full "P2 - high priority"
+// is too wide for a summary row or a calendar block, and the tag is the part
+// carrying the meaning (it's also what taskXpForPriority keys off).
+export function priorityTag(priority) {
+  return String(priority || '').trim().slice(0, 2).toUpperCase() || 'P3';
+}
+
+// P1 is the most urgent, P5 the least — so a smaller number sorts first.
+export function priorityRank(priority) {
+  const n = Number(priorityTag(priority).slice(1));
+  return Number.isFinite(n) ? n : 3;
+}
+
+// Priority first (P1 → P5), then most-recently touched within the same
+// priority. Adding a P5 after a P2 leaves the P2 on top; it doesn't jump the
+// queue just for being newer.
+export function sortByPriority(list) {
+  return [...list].sort(
+    (a, b) => priorityRank(a.priority) - priorityRank(b.priority) || new Date(b.updatedAt) - new Date(a.updatedAt)
+  );
+}
+
 // 'None' is a real, selectable choice — picking it means the reply style
 // just doesn't show up on the ticket, see ticketHasReplyStyle below.
 export const REPLY_STYLE_OPTIONS = [
