@@ -283,6 +283,9 @@ function reportTicketNotifyFailure(action) {
 }
 
 app.get('/api/tickets', (req, res) => {
+  // Yesterday's unfinished plans come back to the list, dayless, before it's
+  // read — so the app never renders a task still claiming a day that's past.
+  ticketsRepo.releaseStalePlans();
   res.json({ tickets: ticketsRepo.listTicketsForViewer(req.query.viewer) });
 });
 

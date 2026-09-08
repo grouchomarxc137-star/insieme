@@ -2,7 +2,7 @@
 // insieme's shared db.js and Principe/Principessa casing.
 import db from './db.js';
 import { TICKET_STATUS, OPEN_STATUSES, ACCOUNT_ROLES, TICKET_SCOPE } from '../src/lib/tickets.js';
-import { clampDuration, isDayKey, isSlot, DEFAULT_DURATION_MIN } from '../src/lib/schedule.js';
+import { clampDuration, isDayKey, isSlot, dayKey, DEFAULT_DURATION_MIN } from '../src/lib/schedule.js';
 
 const now = () => new Date().toISOString();
 
@@ -74,6 +74,31 @@ export function createTicket({ title, category, priority, replyStyle, mood, mess
 
 export function getTicket(id) {
   return ticketFromRow(db.prepare(`SELECT * FROM tickets WHERE id = ?`).get(id));
+}
+
+// A task planned for a day that has now passed without being finished is
+// released back to the to-do list with no day and no time on it. Left alone
+// it would be stranded: yesterday's rail is not somewhere anyone looks, so
+// the task would quietly stop existing everywhere except the Home list's
+// "＋ Today" pill, still lit for a day that's gone. Finished tasks keep their
+// day — that's the record of when they actually got done, and it's what
+// makes a past day's grid worth opening.
+//
+// Applied lazily whenever the list is read, the same way taskListsRepo
+// applies its period rollover, so it costs one UPDATE per load and needs
+// nothing running overnight. `today` is the server's own local day, matching
+// the convention the rest of the app uses (see src/lib/tasksModel.js).
+export function releaseStalePlans(today = dayKey()) {
+  return db
+    .prepare(
+      `UPDATE tickets
+          SET planned_day = NULL, scheduled_at = NULL, updated_at = ?
+        WHERE scope = ?
+          AND status != ?
+          AND planned_day IS NOT NULL
+          AND planned_day < ?`
+    )
+    .run(now(), TICKET_SCOPE.PERSONAL, TICKET_STATUS.HANDLED, today).changes;
 }
 
 export function listTickets() {
