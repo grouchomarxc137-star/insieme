@@ -23,7 +23,6 @@ import * as sm from './resetRoomStateMachine.js';
 import { SESSION_STATUS, ROLES, DEFAULT_NAMES } from './resetRoomConstants.js';
 import { relayDiscordMessage, clearDiscordMessage } from './discordRelay.js';
 import {
-  STATUS_OPTIONS,
   STATUS_USERS,
   statusOptionsForUser,
   formatStatusMessage,
@@ -659,7 +658,7 @@ function parseNicknameSuffix(user, nickname) {
   const suffix = nickname.slice(prefix.length);
   if (!suffix) return empty;
 
-  for (const statusOption of STATUS_OPTIONS) {
+  for (const statusOption of statusOptionsForUser(user)) {
     if (!suffix.startsWith(statusOption.emoji)) continue;
     const rest = suffix.slice(statusOption.emoji.length);
     if (!rest) return { statusEmoji: statusOption.emoji, emergencyEmoji: null };

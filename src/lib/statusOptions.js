@@ -43,7 +43,8 @@ export const STATUS_OPTIONS = [
 
 export const STATUS_USERS = ['Principe', 'Principessa'];
 
-// User-specific statuses are appended to the shared list by statusOptionsForUser.\nexport const IN_LOVE_STATUS_OPTIONS = {
+// User-specific statuses are appended to the shared list by statusOptionsForUser.
+export const IN_LOVE_STATUS_OPTIONS = {
   Principessa: {
     id: 'in-love-with-principe',
     emoji: '🤴🏽💛',
