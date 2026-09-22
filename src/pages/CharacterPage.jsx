@@ -8,7 +8,7 @@ import {
   CHARACTER_STAGE_LEVELS,
   MAX_LEVEL,
 } from '../lib/growth.js';
-import { STATUS_OPTIONS, EMERGENCY_MOOD_OPTIONS } from '../lib/statusOptions.js';
+import { statusOptionsForUser, EMERGENCY_MOOD_OPTIONS } from '../lib/statusOptions.js';
 import './CharacterPage.css';
 
 const STAGE_LABELS = {
@@ -75,7 +75,7 @@ export default function CharacterPage({ user }) {
       <DiscordSendPanel
         title="Status"
         subtitle="Let each other know before they ping you."
-        options={STATUS_OPTIONS}
+        options={statusOptionsForUser(user)}
         user={user}
         messageLabel="status"
         emojiKind="status"
