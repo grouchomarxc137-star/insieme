@@ -25,6 +25,7 @@ import { relayDiscordMessage, clearDiscordMessage } from './discordRelay.js';
 import {
   STATUS_OPTIONS,
   STATUS_USERS,
+  statusOptionsForUser,
   formatStatusMessage,
   EMERGENCY_MOOD_OPTIONS,
   formatEmergencyMessage,
@@ -125,7 +126,7 @@ async function clearChannelMessages(channel) {
 // buildEmergencyMenuRows below — the status buttons spill onto additional
 // rows instead of all packing into one.
 function buildStatusMenuRows(user) {
-  return chunk(STATUS_OPTIONS, 5).map((group) =>
+  return chunk(statusOptionsForUser(user), 5).map((group) =>
     new ActionRowBuilder().addComponents(
       group.map((option) =>
         new ButtonBuilder()
@@ -405,7 +406,7 @@ export function startDiscordBot() {
       if (interaction.guildId !== guildId) return;
 
       const [, statusUser, optionId] = interaction.customId.split(':');
-      const option = STATUS_OPTIONS.find((o) => o.id === optionId);
+      const option = statusOptionsForUser(statusUser).find((o) => o.id === optionId);
       if (!option) return;
 
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
