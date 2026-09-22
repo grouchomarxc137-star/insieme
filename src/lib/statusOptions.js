@@ -43,6 +43,24 @@ export const STATUS_OPTIONS = [
 
 export const STATUS_USERS = ['Principe', 'Principessa'];
 
+export const IN_LOVE_STATUS_OPTIONS = {
+  Principessa: {
+    id: 'in-love-with-principe',
+    emoji: '🤴🏽💛',
+    label: 'In love with my Principe🤴🏽💛',
+  },
+  Principe: {
+    id: 'in-love-with-principessa',
+    emoji: '👸🏽💛',
+    label: 'In love with my Principessa👸🏽💛',
+  },
+};
+
+export function statusOptionsForUser(user) {
+  const customStatus = IN_LOVE_STATUS_OPTIONS[user];
+  return customStatus ? [...STATUS_OPTIONS, customStatus] : STATUS_OPTIONS;
+}
+
 // Same wording the website's DiscordSendPanel builds for the status panel
 // (messageLabel="status") — kept as one function so the in-Discord mood
 // menus post byte-for-byte the same content.
