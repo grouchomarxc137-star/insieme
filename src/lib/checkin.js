@@ -1,5 +1,7 @@
 import { formatDate } from './moments.js';
 
+export const PARTICIPANTS = ['Principe', 'Principessa'];
+
 // The two check-in types share everything except their question list and
 // how a "period" (one day vs one ISO week) is keyed.
 export const CHECKIN_TYPES = ['daily', 'weekly'];

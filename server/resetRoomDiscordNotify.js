@@ -1,7 +1,6 @@
-// Ported from personal/lovissimi's server/nest/discordNotify.js. This one
-// uses the bot token (not a webhook) since it needs to post into the same
-// channel the bot manages the lockdown in.
-import { buildResetRoomSummaryPdf } from './resetRoomPdf.js';
+// Completed website Reset Room sessions post a summary and PDF to the
+// configured Discord channel using the bot token.
+import { buildResetRoomSummaryPdf } from './pdfJobs.js';
 
 const SUFFICIENCY_LABEL = {
   satisfied: 'Satisfied',

@@ -1,9 +1,7 @@
 // Shared "delete the previous message for this key, then post a new one"
 // relay for webhook-posted live messages. Used by /api/discord-message
-// (the website's Status/Emergency Mood panels) and by the in-Discord status
-// menus (server/resetRoomDiscordBot.js), so a mood change from either
-// surface deletes/replaces the same message instead of each surface keeping
-// its own, separately-tracked "latest message".
+// (the website's Status/Emergency Mood panels), so repeated updates replace
+// the same latest message.
 //
 // The key -> message id mapping lives in SQLite (see db.js), not in an
 // in-memory Map: a Map forgets everything on a server restart (which `node
@@ -17,6 +15,7 @@
 // taps) can't both read "no previous message yet" and both post — a
 // check-then-act race that persistence alone doesn't close.
 import db from './db.js';
+import { createKeyedQueue } from './keyedQueue.js';
 
 const getMessageId = db.prepare('SELECT message_id FROM discord_relay_messages WHERE key = ?');
 const upsertMessageId = db.prepare(
@@ -25,16 +24,13 @@ const upsertMessageId = db.prepare(
 );
 const deleteMessageId = db.prepare('DELETE FROM discord_relay_messages WHERE key = ?');
 
-const keyQueues = new Map();
+const keyQueues = createKeyedQueue();
 
 // Chains calls sharing a key onto the same promise so they run one at a
 // time. The queue itself never rejects (failures are swallowed after being
 // handed back to the caller), so one failed call can't wedge the next one.
 function runQueued(key, task) {
-  const previous = keyQueues.get(key) || Promise.resolve();
-  const next = previous.then(task);
-  keyQueues.set(key, next.catch(() => {}));
-  return next;
+  return keyQueues.run(key, task);
 }
 
 async function relayDiscordMessageNow({ webhookUrl, content, key }) {

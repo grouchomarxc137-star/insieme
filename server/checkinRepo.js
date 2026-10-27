@@ -1,7 +1,7 @@
 import db from './db.js';
-import { getPeriodInfo, RATING_QUESTION_ID } from '../src/lib/checkin.js';
+import { getPeriodInfo, RATING_QUESTION_ID, PARTICIPANTS } from '../src/lib/checkin.js';
 
-export const PARTICIPANTS = ['Principe', 'Principessa'];
+export { PARTICIPANTS };
 const STATUS_COMPLETE = 'complete';
 
 function otherParticipant(participant) {

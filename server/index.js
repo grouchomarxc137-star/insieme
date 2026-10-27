@@ -20,12 +20,11 @@ import {
   wasReportSent,
   markReportSent,
 } from './checkinRepo.js';
-import { buildCheckinPdf } from './checkinPdf.js';
-import { buildMonthlyHeatmapPdf } from './monthlyHeatmapPdf.js';
+import { buildCheckinPdf, buildMonthlyHeatmapPdf, closePdfJobs, getPdfJobStats } from './pdfJobs.js';
 import * as resetRoomRepo from './resetRoomRepo.js';
 import { decorateState } from './resetRoomStateMachine.js';
 import { registerSocketHandlers } from './resetRoomSocket.js';
-import { startDiscordBot, setStatusNickname, setEmergencyNickname, clearEmergencyNickname } from './resetRoomDiscordBot.js';
+import { startDiscordBot, stopDiscordBot, setStatusNickname, setEmergencyNickname, clearEmergencyNickname } from './resetRoomDiscordBot.js';
 import { relayDiscordMessage, clearDiscordMessage } from './discordRelay.js';
 import * as ticketsRepo from './ticketsRepo.js';
 import { notifyTicketEvent } from './ticketsDiscordNotify.js';
@@ -46,10 +45,8 @@ app.use(express.json());
 // The only place that ever sees DISCORD_WEBHOOK_URL — the frontend just
 // posts message text (plus an optional dedup `key`) here and never touches
 // the real webhook. The dedup-by-key delete-then-post logic lives in
-// discordRelay.js so it's shared with the in-Discord status menus
-// (server/resetRoomDiscordBot.js) — a mood changed from either surface
-// replaces the same "latest status" message rather than each surface
-// tracking its own.
+// discordRelay.js so a website mood update replaces the same latest status
+// message, including after a server restart.
 app.post('/api/discord-message', async (req, res) => {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -86,9 +83,7 @@ app.post('/api/discord-message', async (req, res) => {
 
 // Emergency Mood's "Cancel": retracts the live emergency message (nothing
 // new to post, unlike the rest of this route) and drops the emergency emoji
-// from the nickname, leaving the status emoji untouched. Same behavior as
-// the "Cancel" button in the in-Discord emergency menu
-// (server/resetRoomDiscordBot.js) — either surface clears the other's view.
+// from the nickname, leaving the status emoji untouched.
 app.post('/api/emergency-mood/cancel', async (req, res) => {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -600,7 +595,7 @@ milestonesRepo.seedDefaults();
 // Check right away (covers a restart landing on a reminder day) and then
 // hourly — no cron dependency needed for once-a-day-ish precision.
 checkAnniversaryReminders();
-setInterval(checkAnniversaryReminders, 60 * 60 * 1000);
+const anniversaryTimer = setInterval(checkAnniversaryReminders, 60 * 60 * 1000);
 
 // How long into the new month to wait before reporting the previous one. At 1
 // the report goes out in the first hour of the 1st, so days backfilled after
@@ -647,7 +642,7 @@ async function checkMonthlyHeatmapReport() {
 }
 
 checkMonthlyHeatmapReport();
-setInterval(checkMonthlyHeatmapReport, 60 * 60 * 1000);
+const heatmapTimer = setInterval(checkMonthlyHeatmapReport, 60 * 60 * 1000);
 
 // Production: this same process serves the built frontend, so Railway only
 // needs to run one service. In dev, Vite's own server proxies /api here
@@ -657,7 +652,7 @@ app.use((req, res) => {
   res.sendFile(path.join(distDir, 'index.html'));
 });
 
-const httpServer = createServer(app);
+export const httpServer = createServer(app);
 const io = new Server(httpServer, {
   path: '/socket.io',
 });
@@ -668,3 +663,37 @@ const port = process.env.PORT || 8787;
 httpServer.listen(port, () => {
   console.log(`Discord relay server listening on port ${port}`);
 });
+
+// Opt-in operational measurements; no report contents, credentials, or public
+// diagnostics endpoint. Railway's graph includes child processes as well.
+let memoryTimer;
+if (process.env.MEMORY_DIAGNOSTICS === '1') {
+  const logMemory = () => console.log('[memory]', JSON.stringify({
+    ...process.memoryUsage(),
+    pdfJobs: getPdfJobStats(),
+    sockets: io.engine.clientsCount,
+  }));
+  logMemory();
+  memoryTimer = setInterval(logMemory, 60_000);
+  memoryTimer.unref();
+}
+
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  clearInterval(anniversaryTimer);
+  clearInterval(heatmapTimer);
+  clearInterval(memoryTimer);
+  const deadline = setTimeout(() => process.exit(1), 10_000);
+  deadline.unref();
+  await Promise.allSettled([
+    closePdfJobs(),
+    stopDiscordBot(),
+    new Promise((resolve) => io.close(resolve)),
+  ]);
+  clearTimeout(deadline);
+  process.exit(0);
+}
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
