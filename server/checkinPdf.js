@@ -1,8 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { questionsForType, typeLabel } from '../src/lib/checkin.js';
-import { PARTICIPANTS } from './checkinRepo.js';
+import { questionsForType, typeLabel, PARTICIPANTS } from '../src/lib/checkin.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EMOJI_FONT_PATH = path.join(__dirname, 'assets/fonts/NotoEmoji-Regular.ttf');

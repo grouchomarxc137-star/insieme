@@ -1,0 +1,55 @@
+name: Verify Insieme
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Check out baseline for memory comparison
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .memory-baseline
+          persist-credentials: false
+      - name: Compare memory with the baseline on Linux
+        if: github.event_name == 'pull_request'
+        run: |
+          ln -s "$GITHUB_WORKSPACE/node_modules" .memory-baseline/node_modules
+          node scripts/memory-benchmark.mjs --baseline-root .memory-baseline > memory-results.json
+      - name: Measure memory on main
+        if: github.event_name == 'push'
+        run: node scripts/memory-benchmark.mjs --runs 1 > memory-results.json
+      - name: Report memory summary
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const result = JSON.parse(fs.readFileSync("memory-results.json", "utf8"));
+            for (const key of ["baseline", "optimized"]) {
+              if (result[key]) { const {samples, ...summary} = result[key]; console.log(key, summary); }
+            }
+            if (result.idleReductionPercent !== undefined) console.log("Idle reduction:", result.idleReductionPercent, "%");
+          '
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: memory-results
+          path: memory-results.json

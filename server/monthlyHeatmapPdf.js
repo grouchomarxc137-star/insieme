@@ -1,7 +1,6 @@
 import PDFDocument from 'pdfkit';
-import { RATING_COLORS, RATING_LABELS } from '../src/lib/checkin.js';
+import { RATING_COLORS, RATING_LABELS, PARTICIPANTS } from '../src/lib/checkin.js';
 import { buildMonthGrid, monthLabel, WEEKDAY_INITIALS } from '../src/lib/heatmap.js';
-import { PARTICIPANTS } from './checkinRepo.js';
 import { THEME } from './checkinPdf.js';
 
 const MARGIN = 48;

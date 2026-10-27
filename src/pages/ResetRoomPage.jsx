@@ -38,8 +38,8 @@ export default function ResetRoomPage() {
         </button>
         {error && <p className="reset-error">{error}</p>}
         <p className="reset-note">
-          You can also trigger this from Discord with <code>/triggered</code> once it's set up — either
-          way, you'll both get a link to join, and messages elsewhere pause until the session wraps up.
+          Share the session link with your partner to join together. When you're both done, the
+          summary will be sent to Discord.
         </p>
       </div>
     </div>

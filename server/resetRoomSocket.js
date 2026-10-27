@@ -1,28 +1,12 @@
-// Ported from personal/lovissimi's server/nest/socket.js — presence
-// tracking + the live event handlers are unchanged, only imports moved.
+// Live website Reset Room actions and presence tracking.
 import * as repo from './resetRoomRepo.js';
 import * as sm from './resetRoomStateMachine.js';
 import { ROLES, SESSION_STATUS } from './resetRoomConstants.js';
 import { notifySessionComplete } from './resetRoomDiscordNotify.js';
-import { unlockAfterSession } from './resetRoomDiscordBot.js';
+import { createPresenceTracker } from './presenceTracker.js';
 
 // sessionId -> { initiator: Set<socketId>, responder: Set<socketId> }
-const presence = new Map();
-
-function getPresenceEntry(sessionId) {
-  if (!presence.has(sessionId)) {
-    presence.set(sessionId, { initiator: new Set(), responder: new Set() });
-  }
-  return presence.get(sessionId);
-}
-
-function presenceSnapshot(sessionId) {
-  const entry = getPresenceEntry(sessionId);
-  return {
-    initiatorConnected: entry.initiator.size > 0,
-    responderConnected: entry.responder.size > 0,
-  };
-}
+const presence = createPresenceTracker();
 
 function roomOf(sessionId) {
   return `session:${sessionId}`;
@@ -35,23 +19,18 @@ function broadcastState(io, sessionId) {
 }
 
 function broadcastPresence(io, sessionId) {
-  io.to(roomOf(sessionId)).emit('presence:update', presenceSnapshot(sessionId));
+  io.to(roomOf(sessionId)).emit('presence:update', presence.snapshot(sessionId));
 }
 
 function notifyDiscordIfJustCompleted(sessionId) {
   const session = repo.getSession(sessionId);
   if (!session) return;
-  if (session.status === SESSION_STATUS.CANCELLED) {
-    unlockAfterSession(sessionId);
-    return;
-  }
   if (session.status !== SESSION_STATUS.COMPLETED || session.discord_notified) return;
   repo.markDiscordNotified(sessionId);
   const fullState = repo.getFullState(sessionId);
   notifySessionComplete(sm.decorateState(fullState)).then(
     () => {
       console.log(`[discord] posted summary for session ${sessionId}`);
-      unlockAfterSession(sessionId);
     },
     (err) => console.error(`[discord] failed to post summary for session ${sessionId}:`, err.message)
   );
@@ -75,12 +54,20 @@ export function registerSocketHandlers(io) {
           resolvedRole = role;
         }
 
+        const previous = socket.data;
+        if (previous.sessionId && (previous.sessionId !== sessionId || previous.role !== resolvedRole)) {
+          presence.remove(previous.sessionId, previous.role, socket.id);
+          if (previous.sessionId !== sessionId) {
+            socket.leave(roomOf(previous.sessionId));
+            broadcastPresence(io, previous.sessionId);
+          }
+        }
+
         socket.data.sessionId = sessionId;
         socket.data.role = resolvedRole;
         socket.join(roomOf(sessionId));
 
-        const entry = getPresenceEntry(sessionId);
-        entry[resolvedRole].add(socket.id);
+        presence.add(sessionId, resolvedRole, socket.id);
 
         ack?.({ ok: true, role: resolvedRole, token: resolvedToken });
         broadcastState(io, sessionId);
@@ -175,8 +162,7 @@ export function registerSocketHandlers(io) {
     socket.on('disconnect', () => {
       const { sessionId, role } = socket.data;
       if (!sessionId || !role) return;
-      const entry = getPresenceEntry(sessionId);
-      entry[role].delete(socket.id);
+      presence.remove(sessionId, role, socket.id);
       broadcastPresence(io, sessionId);
     });
   });
